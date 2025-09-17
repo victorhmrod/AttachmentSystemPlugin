@@ -21,8 +21,6 @@ void AAttachment::Tick(const float DeltaTime)
 void AAttachment::BeginPlay()
 {
 	Super::BeginPlay();
-
-	
 }
 
 void AAttachment::BuildAttachment()
@@ -49,4 +47,21 @@ void AAttachment::BuildAttachment()
 
 	// Optional debugging
 	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' built successfully."), *ID.ToString());
+}
+
+void AAttachment::ConnectTo(AAttachment* Other)
+{
+	{
+		if (!Other || Other == this) return;
+
+		if (!ConnectedAttachments.Contains(Other))
+		{
+			ConnectedAttachments.Add(Other);
+		}
+
+		if (!Other->ConnectedAttachments.Contains(this))
+		{
+			Other->ConnectedAttachments.Add(this);
+		}
+	}
 }

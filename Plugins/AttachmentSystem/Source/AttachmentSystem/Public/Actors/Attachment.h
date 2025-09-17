@@ -46,6 +46,30 @@ private:
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USkeletalMeshComponent> MeshComponent;
+
+	UPROPERTY()
+	FName SocketName;
+
+	// Edges: all attachments connected to this
+	UPROPERTY()
+	TArray<AAttachment*> ConnectedAttachments;
+
+	USkeletalMeshComponent* GetMeshComponent() const
+	{
+		return MeshComponent;
+	}
+
+	FName GetSocketName() const
+	{
+		return SocketName;
+	}
+
+	const TArray<AAttachment*>& GetConnectedAttachments() const
+	{
+		return ConnectedAttachments;
+	}
+
+	void ConnectTo(AAttachment* Other);
 	
 protected:
 	
