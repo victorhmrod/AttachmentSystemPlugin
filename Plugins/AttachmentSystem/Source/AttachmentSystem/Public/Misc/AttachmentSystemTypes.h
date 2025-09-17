@@ -138,8 +138,5 @@ struct FAttachmentInfo : public FTableRowBase
     FText Display_Description ;
     
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory")
-    FName ID;
-    
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory")
     EAttachmentCategory Category;
 };

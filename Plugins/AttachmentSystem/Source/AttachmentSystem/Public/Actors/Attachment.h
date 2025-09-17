@@ -19,9 +19,22 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
 	FName ID;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
 	FAttachmentInfo AttachmentInfo;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Info")
+	TObjectPtr<UDataTable> AttachmentDataTable;
+
+private:
+
+public:
+	
+protected:
+	UFUNCTION(BlueprintCallable)
+	void BuildAttachment();
+
+private:
 };
