@@ -47,6 +47,10 @@ void UWeaponBuilderComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UWeaponBuilderComponent::BuildFromAttachmentData(AAttachment* Attachment, USceneComponent* ParentComponent)
 {
+	for (auto ArrayElement : BaseAttachments)
+	{
+		
+	}
 }
 
 void UWeaponBuilderComponent::AddBehaviorComponent(AAttachment* Attachment)

@@ -23,7 +23,7 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Builder")
 	void BuildWeapon();
 
-	UFUNCTION(BlueprintCallable, Category = "Weapon|Builder")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Builder")
 	void ClearWeapon();
 
 	UFUNCTION(BlueprintPure, Category = "Weapon|Builder")

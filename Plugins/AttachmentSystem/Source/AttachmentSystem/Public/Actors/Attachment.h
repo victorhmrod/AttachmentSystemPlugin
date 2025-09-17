@@ -19,7 +19,7 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true", ExposeOnSpawn = "true"))
 	FName ID;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
@@ -31,10 +31,10 @@ protected:
 private:
 
 public:
-	
-protected:
 	UFUNCTION(BlueprintCallable)
 	void BuildAttachment();
+	
+protected:
 
 private:
 };
