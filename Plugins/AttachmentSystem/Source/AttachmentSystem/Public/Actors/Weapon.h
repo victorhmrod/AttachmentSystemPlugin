@@ -21,6 +21,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Components")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Components")
+	TObjectPtr<USceneComponent> Root;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UWeaponBuilderComponent> WeaponBuilderComponent;
 };

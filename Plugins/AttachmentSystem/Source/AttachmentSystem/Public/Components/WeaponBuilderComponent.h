@@ -46,7 +46,7 @@ protected:
 	TObjectPtr<AWeapon> Weapom;
 
 private:
-	void BuildFromAttachmentData(AAttachment* Attachment, USceneComponent* ParentComponent);
+	void BuildWeaponFromAttachments(AAttachment* Attachment, USceneComponent* ParentComponent);
 
 	void AddBehaviorComponent(AAttachment* Attachment);
 

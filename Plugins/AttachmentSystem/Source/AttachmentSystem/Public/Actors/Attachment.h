@@ -11,6 +11,7 @@ class ATTACHMENTSYSTEM_API AAttachment : public AActor
 {
 	GENERATED_BODY()
 
+#pragma region Unreal Defaults
 public:
 	AAttachment();
 
@@ -19,22 +20,36 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+private:
+#pragma endregion
+
+#pragma region Info
+public:
+	UFUNCTION()
+	void BuildAttachment();
+	
+protected:
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true", ExposeOnSpawn = "true"))
 	FName ID;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true"))
 	FAttachmentInfo AttachmentInfo;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Info")
 	TObjectPtr<UDataTable> AttachmentDataTable;
 
 private:
+#pragma endregion
 
+#pragma region Components
 public:
-	UFUNCTION(BlueprintCallable)
-	void BuildAttachment();
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<USkeletalMeshComponent> MeshComponent;
 	
 protected:
-
+	
 private:
+
+#pragma endregion 
 };

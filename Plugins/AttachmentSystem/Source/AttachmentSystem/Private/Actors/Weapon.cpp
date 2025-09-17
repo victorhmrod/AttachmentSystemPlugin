@@ -5,6 +5,10 @@
 AWeapon::AWeapon()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	
+	Root = CreateDefaultSubobject<USceneComponent>(FName{TEXTVIEW("Root")});
+	
+	SetRootComponent(Root);
 
 	WeaponBuilderComponent = CreateDefaultSubobject<UWeaponBuilderComponent>(FName{TEXTVIEW("WeaponBuilderComponent")});
 }

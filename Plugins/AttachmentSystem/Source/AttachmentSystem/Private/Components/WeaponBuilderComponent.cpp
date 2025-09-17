@@ -6,6 +6,8 @@
 UWeaponBuilderComponent::UWeaponBuilderComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+
+	SetIsReplicatedByDefault(true);
 }
 
 void UWeaponBuilderComponent::BeginPlay()
@@ -45,11 +47,11 @@ void UWeaponBuilderComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void UWeaponBuilderComponent::BuildFromAttachmentData(AAttachment* Attachment, USceneComponent* ParentComponent)
+void UWeaponBuilderComponent::BuildWeaponFromAttachments(AAttachment* Attachment, USceneComponent* ParentComponent)
 {
 	for (auto ArrayElement : BaseAttachments)
 	{
-		
+		ArrayElement;
 	}
 }
 
