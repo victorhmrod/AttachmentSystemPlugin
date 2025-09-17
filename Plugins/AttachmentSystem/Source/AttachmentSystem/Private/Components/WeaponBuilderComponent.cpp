@@ -49,7 +49,7 @@ void UWeaponBuilderComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UWeaponBuilderComponent::BuildWeaponFromAttachments(AAttachment* Attachment, USceneComponent* ParentComponent)
 {
-	for (auto ArrayElement : BaseAttachments)
+	for (const auto ArrayElement : BaseAttachments)
 	{
 		ArrayElement;
 	}
