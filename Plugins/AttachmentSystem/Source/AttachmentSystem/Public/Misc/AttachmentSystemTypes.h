@@ -151,14 +151,10 @@ struct FAttachmentLink
     GENERATED_BODY()
 
     // Instance (for manual setup / testing)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY()
     AAttachment* ChildInstance = nullptr;
 
     // Class (for automatic spawn from DataTable or blueprints)
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TSubclassOf<AAttachment> ChildClass = nullptr;
-
-    // Socket/bone name on the parent
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FName SocketName;
 };

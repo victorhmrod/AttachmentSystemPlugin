@@ -66,13 +66,11 @@ private:
 	void BuildWeaponFromAttachmentGraph(AAttachment* ParentAttachment, TSet<AAttachment*>& Visited);
 
 	/** Recursive function for search */
-	AAttachment* FindAttachmentRecursive(AAttachment* Attachment, FName SocketName, TSet<AAttachment*>& Visited);
+	AAttachment* FindAttachmentRecursive(AAttachment* Attachment, EAttachmentCategory TargetCategory, TSet<AAttachment*>& Visited);
 
 	/** Recursive function for cleaning */
 	void ClearAttachmentRecursive(AAttachment* Attachment, TSet<AAttachment*>& Visited);
 
 	/** Replication */
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
-
-	void BuildWeaponBFS();
 };

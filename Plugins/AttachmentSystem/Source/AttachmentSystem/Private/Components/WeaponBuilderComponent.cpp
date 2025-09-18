@@ -35,16 +35,23 @@ void UWeaponBuilderComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 
 void UWeaponBuilderComponent::BuildWeapon()
 {
+    // Clear previous attachments
     ClearWeapon();
 
     TSet<AAttachment*> Visited;
     TQueue<AAttachment*> Queue;
+
+	// Temporary array of root instances
     TArray<AAttachment*> RootAttachmentsInstances;
 
-    // Spawn and setup base attachments
+	// Spawn and setup of BaseAttachments
     for (const TSubclassOf<AAttachment>& AttachmentClass : BaseAttachments)
     {
         if (!*AttachmentClass) continue;
+
+    	// Avoid duplicate spawn
+        bool bAlreadySpawned = SpawnedAttachments.ContainsByPredicate([&](AAttachment* A) { return A->IsA(AttachmentClass); });
+        if (bAlreadySpawned) continue;
 
         FActorSpawnParameters SpawnParams;
         SpawnParams.Owner = GetOwner();
@@ -59,32 +66,18 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         if (!RootInstance) continue;
 
-        RootInstance->BuildAttachment();
-
+    	// Connect the root directly to the weapon using the category socket
         if (Weapon && Weapon->GetRootComponentMesh() && RootInstance->MeshComponent)
         {
-            FName RootSocket = NAME_None;
-
-            // Derive socket from category
-            if (RootInstance->GetAttachmentInfo().Category != EAttachmentCategory::MonolithicReceiver)
-            {
-                RootSocket = GetSocketFromCategory(RootInstance->GetAttachmentInfo().Category);
-            }
-
-            if (Weapon->GetRootComponentMesh()->DoesSocketExist(RootSocket))
-            {
-                RootInstance->MeshComponent->AttachToComponent(
-                    Weapon->GetRootComponentMesh(),
-                    FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                    RootSocket
-                );
-            }
+	        RootInstance->MeshComponent->AttachToComponent(
+				Weapon->GetRootComponent(),
+				FAttachmentTransformRules::SnapToTargetNotIncludingScale);
         }
 
         Queue.Enqueue(RootInstance);
         Visited.Add(RootInstance);
-
         RootAttachmentsInstances.Add(RootInstance);
+
         SpawnedAttachments.Add(RootInstance);
         SpawnedMeshes.Add(RootInstance, RootInstance->MeshComponent);
     }
@@ -100,27 +93,33 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         for (FAttachmentLink& Link : Current->ChildrenLinks)
         {
-            if (!*Link.ChildClass) continue;
+        	// If an instance already exists, just connect
+            if (!Link.ChildInstance && *Link.ChildClass)
+            {
+            	// Avoid duplicate spawn
+                bool bAlreadySpawned = SpawnedAttachments.ContainsByPredicate([&](AAttachment* A) { return A->IsA(Link.ChildClass); });
+                if (bAlreadySpawned) continue;
 
-            FActorSpawnParameters SpawnParams;
-            SpawnParams.Owner = GetOwner();
-            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+                FActorSpawnParameters SpawnParams;
+                SpawnParams.Owner = GetOwner();
+                SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-            // Spawn child
-            AAttachment* ChildInstance = GetWorld()->SpawnActor<AAttachment>(
-                Link.ChildClass,
-                FVector::ZeroVector,
-                FRotator::ZeroRotator,
-                SpawnParams
-            );
+            	// Spawn child instance
+                Link.ChildInstance = GetWorld()->SpawnActor<AAttachment>(
+                    Link.ChildClass,
+                    FVector::ZeroVector,
+                    FRotator::ZeroRotator,
+                    SpawnParams
+                );
+            }
 
+            AAttachment* ChildInstance = Link.ChildInstance;
             if (!ChildInstance) continue;
 
-            ChildInstance->BuildAttachment();
             USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
+        	// Connect via the child category socket
             FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
-
             if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
             {
                 ChildMesh->AttachToComponent(
@@ -130,13 +129,19 @@ void UWeaponBuilderComponent::BuildWeapon()
                 );
             }
 
-            // Register instance
-            Link.ChildInstance = ChildInstance;
-            Queue.Enqueue(ChildInstance);
-            Visited.Add(ChildInstance);
+            // BFS enqueue
+            if (!Visited.Contains(ChildInstance))
+            {
+                Queue.Enqueue(ChildInstance);
+                Visited.Add(ChildInstance);
+            }
 
-            SpawnedAttachments.Add(ChildInstance);
-            SpawnedMeshes.Add(ChildInstance, ChildMesh);
+        	// Register globally
+            if (!SpawnedAttachments.Contains(ChildInstance))
+            {
+                SpawnedAttachments.Add(ChildInstance);
+                SpawnedMeshes.Add(ChildInstance, ChildMesh);
+            }
         }
     }
 }
@@ -148,10 +153,11 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 
 	USkeletalMeshComponent* ParentMesh = ParentAttachment->MeshComponent;
 
-	for (const FAttachmentLink& Link : ParentAttachment->ChildrenLinks)
+	for (FAttachmentLink& Link : ParentAttachment->ChildrenLinks)
 	{
 		AAttachment* ChildInstance = Link.ChildInstance;
 
+		// Spawn child if it doesn't exist yet
 		if (!ChildInstance && *Link.ChildClass)
 		{
 			FActorSpawnParameters SpawnParams;
@@ -171,7 +177,9 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 		ChildInstance->BuildAttachment();
 		USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
-		FName TargetSocket = Link.SocketName;
+		// Use attachment category as socket
+		const FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
+
 		if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
 		{
 			ChildMesh->AttachToComponent(
@@ -181,8 +189,10 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 			);
 		}
 
+		// Recurse into children
 		BuildWeaponFromAttachmentGraph(ChildInstance, Visited);
 
+		// Register spawned instance
 		SpawnedAttachments.Add(ChildInstance);
 		SpawnedMeshes.Add(ChildInstance, ChildMesh);
 	}
@@ -232,40 +242,41 @@ void UWeaponBuilderComponent::ClearAttachmentRecursive(AAttachment* Attachment, 
 AAttachment* UWeaponBuilderComponent::GetAttachmentAtSocket(const EAttachmentCategory Category)
 {
 	TSet<AAttachment*> Visited;
-	const FName TargetSocket = GetSocketFromCategory(Category);
 
 	for (AAttachment* Attachment : SpawnedAttachments)
 	{
-		AAttachment* Found = FindAttachmentRecursive(Attachment, TargetSocket, Visited);
+		AAttachment* Found = FindAttachmentRecursive(Attachment, Category, Visited);
 		if (Found) return Found;
 	}
+
 	return nullptr;
 }
 
-AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attachment, const FName SocketName, TSet<AAttachment*>& Visited)
+AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attachment, const EAttachmentCategory TargetCategory, TSet<AAttachment*>& Visited)
 {
 	if (!Attachment || Visited.Contains(Attachment)) return nullptr;
 	Visited.Add(Attachment);
 
-	// Check if the attachment's category matches the target socket
-	const FName AttachmentSocket = GetSocketFromCategory(Attachment->GetAttachmentInfo().Category);
-	if (AttachmentSocket == SocketName)
+	// Check if the current attachment's category matches the target
+	if (Attachment->GetAttachmentInfo().Category == TargetCategory)
 	{
 		return Attachment;
 	}
 
+	// Traverse all children links
 	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
 	{
 		AAttachment* ChildInstance = Link.ChildInstance;
 		if (!ChildInstance) continue;
 
-		// Compare link socket (from parent to child) with target
-		if (Link.SocketName == SocketName)
+		// Check if the child's category matches
+		if (ChildInstance->GetAttachmentInfo().Category == TargetCategory)
 		{
 			return ChildInstance;
 		}
 
-		AAttachment* Found = FindAttachmentRecursive(ChildInstance, SocketName, Visited);
+		// Recursively search in the child branch
+		AAttachment* Found = FindAttachmentRecursive(ChildInstance, TargetCategory, Visited);
 		if (Found) return Found;
 	}
 
