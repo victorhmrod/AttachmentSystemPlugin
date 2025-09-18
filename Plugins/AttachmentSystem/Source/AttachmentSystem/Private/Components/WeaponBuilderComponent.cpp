@@ -35,91 +35,108 @@ void UWeaponBuilderComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 
 void UWeaponBuilderComponent::BuildWeapon()
 {
-	ClearWeapon();
-	BuildWeaponBFS();
-}
-
-void UWeaponBuilderComponent::BuildWeaponBFS()
-{
-    if (!IsValid(Weapon) || !Weapon->GetRootComponentMesh())
-    {
-	    return;
-    }
+    ClearWeapon();
 
     TSet<AAttachment*> Visited;
     TQueue<AAttachment*> Queue;
+    TArray<AAttachment*> RootAttachmentsInstances;
 
-    // Spawn e setup das instâncias base
-    for (TSubclassOf AttachmentClass : BaseAttachments)
+    // Spawn and setup base attachments
+    for (const TSubclassOf<AAttachment>& AttachmentClass : BaseAttachments)
     {
-        if (!AttachmentClass) continue;
+        if (!*AttachmentClass) continue;
 
         FActorSpawnParameters SpawnParams;
         SpawnParams.Owner = GetOwner();
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-        AAttachment* AttachmentInstance = GetWorld()->SpawnActor<AAttachment>(
+        AAttachment* RootInstance = GetWorld()->SpawnActor<AAttachment>(
             AttachmentClass,
             FVector::ZeroVector,
             FRotator::ZeroRotator,
             SpawnParams
         );
 
-        if (!AttachmentInstance) continue;
+        if (!RootInstance) continue;
 
-        AttachmentInstance->BuildAttachment();
-        SpawnedAttachments.Add(AttachmentInstance);
+        RootInstance->BuildAttachment();
 
-        if (AttachmentInstance->MeshComponent)
+        if (Weapon && Weapon->GetRootComponentMesh() && RootInstance->MeshComponent)
         {
-            SpawnedMeshes.Add(AttachmentInstance, AttachmentInstance->MeshComponent);
+            FName RootSocket = NAME_None;
 
-            AttachmentInstance->MeshComponent->AttachToComponent(
-                Weapon->GetRootComponentMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale
-            );
+            // Derive socket from category
+            if (RootInstance->GetAttachmentInfo().Category != EAttachmentCategory::MonolithicReceiver)
+            {
+                RootSocket = GetSocketFromCategory(RootInstance->GetAttachmentInfo().Category);
+            }
+
+            if (Weapon->GetRootComponentMesh()->DoesSocketExist(RootSocket))
+            {
+                RootInstance->MeshComponent->AttachToComponent(
+                    Weapon->GetRootComponentMesh(),
+                    FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                    RootSocket
+                );
+            }
         }
 
-        Queue.Enqueue(AttachmentInstance);
-        Visited.Add(AttachmentInstance);
+        Queue.Enqueue(RootInstance);
+        Visited.Add(RootInstance);
+
+        RootAttachmentsInstances.Add(RootInstance);
+        SpawnedAttachments.Add(RootInstance);
+        SpawnedMeshes.Add(RootInstance, RootInstance->MeshComponent);
     }
 
+    // BFS traversal for children
     while (!Queue.IsEmpty())
     {
         AAttachment* Current;
         Queue.Dequeue(Current);
+        if (!Current) continue;
 
-        USceneComponent* ParentMesh = Current->MeshComponent;
-        const EAttachmentCategory ParentType = Current->GetAttachmentInfo().Category;
+        USkeletalMeshComponent* ParentMesh = Current->MeshComponent;
 
-        for (const FAttachmentLink& Link : Current->ChildrenLinks)
+        for (FAttachmentLink& Link : Current->ChildrenLinks)
         {
-            if (!Link.Child || Visited.Contains(Link.Child)) continue;
+            if (!*Link.ChildClass) continue;
 
-            EAttachmentCategory ChildType = Link.Child->GetAttachmentInfo().Category;
-            bool bValid = true;
+            FActorSpawnParameters SpawnParams;
+            SpawnParams.Owner = GetOwner();
+            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-            if (ParentType == EAttachmentCategory::LowerReceiver && ChildType != EAttachmentCategory::Barrel)
-            {
-                UE_LOG(LogTemp, Warning, TEXT("Cannot attach %s to LowerReceiver: type mismatch!"), *Link.Child->GetName());
-                bValid = false;
-            }
+            // Spawn child
+            AAttachment* ChildInstance = GetWorld()->SpawnActor<AAttachment>(
+                Link.ChildClass,
+                FVector::ZeroVector,
+                FRotator::ZeroRotator,
+                SpawnParams
+            );
 
-            if (!bValid) continue;
+            if (!ChildInstance) continue;
 
-            USceneComponent* ChildMesh = Link.Child->MeshComponent;
+            ChildInstance->BuildAttachment();
+            USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
-            if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(Link.SocketName))
+            FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
+
+            if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
             {
                 ChildMesh->AttachToComponent(
                     ParentMesh,
                     FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                    Link.SocketName
+                    TargetSocket
                 );
             }
 
-            Queue.Enqueue(Link.Child);
-            Visited.Add(Link.Child);
+            // Register instance
+            Link.ChildInstance = ChildInstance;
+            Queue.Enqueue(ChildInstance);
+            Visited.Add(ChildInstance);
+
+            SpawnedAttachments.Add(ChildInstance);
+            SpawnedMeshes.Add(ChildInstance, ChildMesh);
         }
     }
 }
@@ -129,44 +146,67 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 	if (!ParentAttachment || Visited.Contains(ParentAttachment)) return;
 	Visited.Add(ParentAttachment);
 
-	USceneComponent* ParentMesh = ParentAttachment->MeshComponent;
+	USkeletalMeshComponent* ParentMesh = ParentAttachment->MeshComponent;
 
 	for (const FAttachmentLink& Link : ParentAttachment->ChildrenLinks)
 	{
-		if (!Link.Child) continue;
+		AAttachment* ChildInstance = Link.ChildInstance;
 
-		USceneComponent* ChildMesh = Link.Child->MeshComponent;
+		if (!ChildInstance && *Link.ChildClass)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = GetOwner();
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(Link.SocketName))
+			ChildInstance = GetWorld()->SpawnActor<AAttachment>(
+				Link.ChildClass,
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				SpawnParams
+			);
+		}
+
+		if (!ChildInstance) continue;
+
+		ChildInstance->BuildAttachment();
+		USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
+
+		FName TargetSocket = Link.SocketName;
+		if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
 		{
 			ChildMesh->AttachToComponent(
 				ParentMesh,
 				FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-				Link.SocketName
+				TargetSocket
 			);
 		}
 
-		BuildWeaponFromAttachmentGraph(Link.Child, Visited);
+		BuildWeaponFromAttachmentGraph(ChildInstance, Visited);
+
+		SpawnedAttachments.Add(ChildInstance);
+		SpawnedMeshes.Add(ChildInstance, ChildMesh);
 	}
 }
 
+// Clears weapon graph
 void UWeaponBuilderComponent::ClearWeapon()
 {
 	TSet<AAttachment*> Visited;
-
-	for (AAttachment* Attachment : SpawnedAttachments)
+	for (AAttachment* Root : SpawnedAttachments)
 	{
-		ClearAttachmentRecursive(Attachment, Visited);
+		ClearAttachmentRecursive(Root, Visited);
+	}
 
-		SpawnedMeshes.Remove(Attachment);
-
-		if (Attachment && !Attachment->IsPendingKillPending())
+	for (auto& Pair : SpawnedMeshes)
+	{
+		if (Pair.Value)
 		{
-			Attachment->Destroy();
+			Pair.Value->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		}
 	}
 
 	SpawnedAttachments.Empty();
+	SpawnedMeshes.Empty();
 }
 
 void UWeaponBuilderComponent::ClearAttachmentRecursive(AAttachment* Attachment, TSet<AAttachment*>& Visited)
@@ -176,9 +216,10 @@ void UWeaponBuilderComponent::ClearAttachmentRecursive(AAttachment* Attachment, 
 
 	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
 	{
-		if (Link.Child)
+		AAttachment* Child = Link.ChildInstance;
+		if (Child)
 		{
-			ClearAttachmentRecursive(Link.Child, Visited);
+			ClearAttachmentRecursive(Child, Visited);
 		}
 	}
 
@@ -188,35 +229,57 @@ void UWeaponBuilderComponent::ClearAttachmentRecursive(AAttachment* Attachment, 
 	}
 }
 
-AAttachment* UWeaponBuilderComponent::GetAttachmentAtSocket(const FName SocketName)
+AAttachment* UWeaponBuilderComponent::GetAttachmentAtSocket(const EAttachmentCategory Category)
 {
 	TSet<AAttachment*> Visited;
+	const FName TargetSocket = GetSocketFromCategory(Category);
+
 	for (AAttachment* Attachment : SpawnedAttachments)
 	{
-		AAttachment* Found = FindAttachmentRecursive(Attachment, SocketName, Visited);
+		AAttachment* Found = FindAttachmentRecursive(Attachment, TargetSocket, Visited);
 		if (Found) return Found;
 	}
 	return nullptr;
 }
 
-AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attachment, FName SocketName, TSet<AAttachment*>& Visited)
+AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attachment, const FName SocketName, TSet<AAttachment*>& Visited)
 {
 	if (!Attachment || Visited.Contains(Attachment)) return nullptr;
 	Visited.Add(Attachment);
 
+	// Check if the attachment's category matches the target socket
+	const FName AttachmentSocket = GetSocketFromCategory(Attachment->GetAttachmentInfo().Category);
+	if (AttachmentSocket == SocketName)
+	{
+		return Attachment;
+	}
+
 	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
 	{
+		AAttachment* ChildInstance = Link.ChildInstance;
+		if (!ChildInstance) continue;
+
+		// Compare link socket (from parent to child) with target
 		if (Link.SocketName == SocketName)
 		{
-			return Link.Child;
+			return ChildInstance;
 		}
 
-		AAttachment* Found = FindAttachmentRecursive(Link.Child, SocketName, Visited);
+		AAttachment* Found = FindAttachmentRecursive(ChildInstance, SocketName, Visited);
 		if (Found) return Found;
 	}
 
 	return nullptr;
 }
+
+FName UWeaponBuilderComponent::GetSocketFromCategory(EAttachmentCategory Category) const
+{
+	const UEnum* EnumPtr = StaticEnum<EAttachmentCategory>();
+	if (!EnumPtr) return NAME_None;
+
+	return FName(EnumPtr->GetNameStringByValue(static_cast<int64>(Category)));
+}
+
 
 void UWeaponBuilderComponent::AddBehaviorComponent(AAttachment* Attachment)
 {

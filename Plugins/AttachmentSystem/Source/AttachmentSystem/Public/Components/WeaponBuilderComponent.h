@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Misc/AttachmentSystemTypes.h"
 #include "WeaponBuilderComponent.generated.h"
 
 class AWeapon;
@@ -37,7 +38,9 @@ public:
 
 	/** Searches for a specific attachment via socket */
 	UFUNCTION(BlueprintPure, Category = "Weapon|Builder")
-	AAttachment* GetAttachmentAtSocket(FName SocketName);
+	AAttachment* GetAttachmentAtSocket(EAttachmentCategory Category);
+
+	FName GetSocketFromCategory(EAttachmentCategory Category) const;
 
 	/** Adds extra behavior based on the attachment type */
 	void AddBehaviorComponent(AAttachment* Attachment);

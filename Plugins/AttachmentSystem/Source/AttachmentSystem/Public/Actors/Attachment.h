@@ -48,9 +48,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Graph")
 	TArray<FAttachmentLink> ChildrenLinks;
-	
-	UPROPERTY()
-	FName SocketName;
 
 	// Edges: all attachments connected to this
 
@@ -62,11 +59,6 @@ public:
 	FAttachmentInfo GetAttachmentInfo() const
 	{
 		return AttachmentInfo;
-	}
-
-	FName GetSocketName() const
-	{
-		return SocketName;
 	}
 	
 protected:
