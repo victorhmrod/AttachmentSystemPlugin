@@ -29,7 +29,6 @@ public:
 	void BuildAttachment();
 	
 protected:
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info", meta = (AllowPrivateAccess = "true", ExposeOnSpawn = "true"))
 	FName ID;
 	
@@ -47,29 +46,28 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USkeletalMeshComponent> MeshComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Graph")
+	TArray<FAttachmentLink> ChildrenLinks;
+	
 	UPROPERTY()
 	FName SocketName;
 
 	// Edges: all attachments connected to this
-	UPROPERTY()
-	TArray<AAttachment*> ConnectedAttachments;
 
 	USkeletalMeshComponent* GetMeshComponent() const
 	{
 		return MeshComponent;
 	}
 
+	FAttachmentInfo GetAttachmentInfo() const
+	{
+		return AttachmentInfo;
+	}
+
 	FName GetSocketName() const
 	{
 		return SocketName;
 	}
-
-	const TArray<AAttachment*>& GetConnectedAttachments() const
-	{
-		return ConnectedAttachments;
-	}
-
-	void ConnectTo(AAttachment* Other);
 	
 protected:
 	

@@ -7,6 +7,10 @@
 class AWeapon;
 class AAttachment;
 
+/**
+* Component responsible for mounting/dismounting weapons using an attachment graph.
+* Each edge of the graph contains the parent's socket information.
+*/
 UCLASS(meta = (BlueprintSpawnableComponent))
 class ATTACHMENTSYSTEM_API UWeaponBuilderComponent : public UActorComponent
 {
@@ -40,10 +44,13 @@ public:
 
 protected:
 	UPROPERTY(Replicated)
-	TObjectPtr<AWeapon> Weapom;
+	TObjectPtr<AWeapon> Weapon;
 	
-	UPROPERTY(EditAnywhere, Category = "Weapon|Parts")
-	TArray<AAttachment*> BaseAttachments;
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Parts")
+	TArray<TSubclassOf<AAttachment>> BaseAttachments;
+
+	UPROPERTY(Transient)
+	TArray<AAttachment*> SpawnedAttachments;
 	
 	UPROPERTY()
 	TMap<AAttachment*, USceneComponent*> SpawnedMeshes;
@@ -53,14 +60,16 @@ protected:
 
 private:
 	/** Recursive function that navigates the graph and assembles the attachments */
-	void BuildWeaponFromAttachmentGraph(AAttachment* Attachment, const AAttachment* ParentAttachment, TSet<AAttachment*>& Visited);
+	void BuildWeaponFromAttachmentGraph(AAttachment* ParentAttachment, TSet<AAttachment*>& Visited);
 
 	/** Recursive function for search */
-	AAttachment* FindAttachmentRecursive(AAttachment* Attachment, AAttachment* Parent, FName SocketName);
+	AAttachment* FindAttachmentRecursive(AAttachment* Attachment, FName SocketName, TSet<AAttachment*>& Visited);
 
 	/** Recursive function for cleaning */
-	void ClearAttachmentRecursive(AAttachment* Attachment, AAttachment* Parent);
+	void ClearAttachmentRecursive(AAttachment* Attachment, TSet<AAttachment*>& Visited);
 
 	/** Replication */
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
+	void BuildWeaponBFS();
 };

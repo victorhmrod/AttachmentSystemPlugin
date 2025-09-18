@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "AttachmentSystemTypes.generated.h"
 
+class AAttachment;
 /**
  * @brief Defines atomic categories for all major firearm components and attachments.
  */
@@ -136,7 +137,22 @@ struct FAttachmentInfo : public FTableRowBase
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display")
     FText Display_Description ;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Display")
+    TSoftObjectPtr<USkeletalMesh> Mesh;
     
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory")
     EAttachmentCategory Category;
+};
+
+USTRUCT(BlueprintType)
+struct FAttachmentLink
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    AAttachment* Child;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FName SocketName;
 };

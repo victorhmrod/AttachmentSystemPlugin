@@ -6,21 +6,20 @@ AAttachment::AAttachment()
 
 	// Create the root mesh component;
 	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(FName{TEXTVIEW("MeshComponent")});
-
 	// Set the mesh component to be the root of this class.
 	SetRootComponent(MeshComponent);
-}
-
-void AAttachment::Tick(const float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	
 }
 
 void AAttachment::BeginPlay()
 {
 	Super::BeginPlay();
+
+	BuildAttachment();
+}
+
+void AAttachment::Tick(const float DeltaTime)
+{
+	Super::Tick(DeltaTime);
 }
 
 void AAttachment::BuildAttachment()
@@ -42,26 +41,8 @@ void AAttachment::BuildAttachment()
 		return;
 	}
 
-	// Copy the found struct to the local variable
 	AttachmentInfo = *FoundRow;
+	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' build successfully."), *ID.ToString());
 
-	// Optional debugging
-	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' built successfully."), *ID.ToString());
-}
-
-void AAttachment::ConnectTo(AAttachment* Other)
-{
-	{
-		if (!Other || Other == this) return;
-
-		if (!ConnectedAttachments.Contains(Other))
-		{
-			ConnectedAttachments.Add(Other);
-		}
-
-		if (!Other->ConnectedAttachments.Contains(this))
-		{
-			Other->ConnectedAttachments.Add(this);
-		}
-	}
+	MeshComponent->SetSkeletalMeshAsset(AttachmentInfo.Mesh.LoadSynchronous());
 }

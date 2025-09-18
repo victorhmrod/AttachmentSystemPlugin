@@ -26,4 +26,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UWeaponBuilderComponent> WeaponBuilderComponent;
+
+public:
+	TObjectPtr<USceneComponent> GetRootComponentMesh()
+	{
+		return Root;
+	}
 };
