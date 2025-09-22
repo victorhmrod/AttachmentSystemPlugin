@@ -150,11 +150,54 @@ struct FAttachmentLink
 {
     GENERATED_BODY()
 
-    // Instance (for manual setup / testing)
-    UPROPERTY()
+    // Class of the child attachment
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    TSubclassOf<AAttachment> ChildClass;
+
+    // Runtime instance
+    UPROPERTY(Transient)
     AAttachment* ChildInstance = nullptr;
 
-    // Class (for automatic spawn from DataTable or blueprints)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TSubclassOf<AAttachment> ChildClass = nullptr;
+    // Positional offset relative to the socket
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    FTransform Offset = FTransform::Identity;
+};
+
+USTRUCT(BlueprintType)
+struct FStoredAttachmentFlat
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadWrite)
+    TSubclassOf<AAttachment> AttachmentClass;
+
+    UPROPERTY(BlueprintReadWrite)
+    EAttachmentCategory Category;
+
+    UPROPERTY(BlueprintReadWrite)
+    FVector Offset;
+
+    UPROPERTY(BlueprintReadWrite)
+    int32 ParentIndex;
+};
+
+UCLASS(BlueprintType)
+class UStoredAttachmentData : public UObject
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    TSubclassOf<class AAttachment> AttachmentClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    EAttachmentCategory Category;
+
+    // Offset relativo ao socket do pai
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    FTransform Offset;
+
+    // Filhos do attachment (recursivo)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    TArray<TObjectPtr<UStoredAttachmentData>> Children;
 };

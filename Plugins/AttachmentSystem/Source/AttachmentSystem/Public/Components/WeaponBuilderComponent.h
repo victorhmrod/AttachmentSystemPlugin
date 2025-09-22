@@ -73,4 +73,8 @@ private:
 
 	/** Replication */
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UStoredAttachmentData* BuildStoredDataFromAttachment(AAttachment* Attachment);
+	AAttachment* SpawnAttachmentFromStoredData(UStoredAttachmentData* Data, USkeletalMeshComponent* ParentMesh,
+	                                           FName ParentSocket);
 };

@@ -6,6 +6,8 @@
 #include "Misc/AttachmentSystemTypes.h"
 #include "Attachment.generated.h"
 
+class UBoxComponent;
+
 UCLASS()
 class ATTACHMENTSYSTEM_API AAttachment : public AActor
 {
@@ -13,6 +15,8 @@ class ATTACHMENTSYSTEM_API AAttachment : public AActor
 
 #pragma region Unreal Defaults
 public:
+	virtual void PostInitializeComponents() override;
+	
 	AAttachment();
 
 	virtual void Tick(float DeltaTime) override;
@@ -43,6 +47,9 @@ private:
 
 #pragma region Components
 public:
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Components")
+	UBoxComponent* GetBoxComponent();
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USkeletalMeshComponent> MeshComponent;
 

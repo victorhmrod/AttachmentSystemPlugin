@@ -1,20 +1,23 @@
 #include "Actors/Attachment.h"
 
+void AAttachment::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	BuildAttachment();
+}
+
 AAttachment::AAttachment()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Create the root mesh component;
 	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(FName{TEXTVIEW("MeshComponent")});
-	// Set the mesh component to be the root of this class.
 	SetRootComponent(MeshComponent);
 }
 
 void AAttachment::BeginPlay()
 {
 	Super::BeginPlay();
-
-	BuildAttachment();
 }
 
 void AAttachment::Tick(const float DeltaTime)

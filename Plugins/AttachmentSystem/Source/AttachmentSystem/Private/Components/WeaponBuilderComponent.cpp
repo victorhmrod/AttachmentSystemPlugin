@@ -2,6 +2,7 @@
 
 #include "Actors/Attachment.h"
 #include "Actors/Weapon.h"
+#include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
 
 UWeaponBuilderComponent::UWeaponBuilderComponent()
@@ -35,23 +36,16 @@ void UWeaponBuilderComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 
 void UWeaponBuilderComponent::BuildWeapon()
 {
-    // Clear previous attachments
+    // Limpa attachments antigos
     ClearWeapon();
 
     TSet<AAttachment*> Visited;
     TQueue<AAttachment*> Queue;
 
-	// Temporary array of root instances
-    TArray<AAttachment*> RootAttachmentsInstances;
-
-	// Spawn and setup of BaseAttachments
+    // Spawn e setup dos BaseAttachments (roots)
     for (const TSubclassOf<AAttachment>& AttachmentClass : BaseAttachments)
     {
         if (!*AttachmentClass) continue;
-
-    	// Avoid duplicate spawn
-        bool bAlreadySpawned = SpawnedAttachments.ContainsByPredicate([&](AAttachment* A) { return A->IsA(AttachmentClass); });
-        if (bAlreadySpawned) continue;
 
         FActorSpawnParameters SpawnParams;
         SpawnParams.Owner = GetOwner();
@@ -66,23 +60,28 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         if (!RootInstance) continue;
 
-    	// Connect the root directly to the weapon using the category socket
+        RootInstance->BuildAttachment();
+
+        // Conecta o root na arma diretamente
         if (Weapon && Weapon->GetRootComponentMesh() && RootInstance->MeshComponent)
         {
-	        RootInstance->MeshComponent->AttachToComponent(
-				Weapon->GetRootComponent(),
-				FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+            RootInstance->MeshComponent->AttachToComponent(
+                Weapon->GetRootComponentMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale
+            );
+
+            // Para o root, você poderia aplicar um offset se quiser
+            RootInstance->MeshComponent->SetRelativeTransform(FTransform::Identity);
         }
 
         Queue.Enqueue(RootInstance);
         Visited.Add(RootInstance);
-        RootAttachmentsInstances.Add(RootInstance);
 
         SpawnedAttachments.Add(RootInstance);
         SpawnedMeshes.Add(RootInstance, RootInstance->MeshComponent);
     }
 
-    // BFS traversal for children
+    // BFS traversal para os children
     while (!Queue.IsEmpty())
     {
         AAttachment* Current;
@@ -93,18 +92,13 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         for (FAttachmentLink& Link : Current->ChildrenLinks)
         {
-        	// If an instance already exists, just connect
+            // Spawn do child se não existir
             if (!Link.ChildInstance && *Link.ChildClass)
             {
-            	// Avoid duplicate spawn
-                bool bAlreadySpawned = SpawnedAttachments.ContainsByPredicate([&](AAttachment* A) { return A->IsA(Link.ChildClass); });
-                if (bAlreadySpawned) continue;
-
                 FActorSpawnParameters SpawnParams;
                 SpawnParams.Owner = GetOwner();
                 SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-            	// Spawn child instance
                 Link.ChildInstance = GetWorld()->SpawnActor<AAttachment>(
                     Link.ChildClass,
                     FVector::ZeroVector,
@@ -116,9 +110,11 @@ void UWeaponBuilderComponent::BuildWeapon()
             AAttachment* ChildInstance = Link.ChildInstance;
             if (!ChildInstance) continue;
 
+            ChildInstance->BuildAttachment();
+
             USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
-        	// Connect via the child category socket
+            // Anexa ao socket usando categoria
             FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
             if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
             {
@@ -127,16 +123,19 @@ void UWeaponBuilderComponent::BuildWeapon()
                     FAttachmentTransformRules::SnapToTargetNotIncludingScale,
                     TargetSocket
                 );
+
+                // Aplica o offset do link (posição, rotação, escala)
+                ChildMesh->SetRelativeTransform(Link.Offset);
             }
 
-            // BFS enqueue
+            // Enqueue BFS se ainda não visitado
             if (!Visited.Contains(ChildInstance))
             {
                 Queue.Enqueue(ChildInstance);
                 Visited.Add(ChildInstance);
             }
 
-        	// Register globally
+            // Registro global
             if (!SpawnedAttachments.Contains(ChildInstance))
             {
                 SpawnedAttachments.Add(ChildInstance);
@@ -145,6 +144,7 @@ void UWeaponBuilderComponent::BuildWeapon()
         }
     }
 }
+
 
 void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* ParentAttachment, TSet<AAttachment*>& Visited)
 {
@@ -295,3 +295,69 @@ FName UWeaponBuilderComponent::GetSocketFromCategory(EAttachmentCategory Categor
 void UWeaponBuilderComponent::AddBehaviorComponent(AAttachment* Attachment)
 {
 }
+
+UStoredAttachmentData* UWeaponBuilderComponent::BuildStoredDataFromAttachment(AAttachment* Attachment)
+{
+	if (!Attachment) return nullptr;
+
+	UStoredAttachmentData* Data = NewObject<UStoredAttachmentData>();
+	Data->AttachmentClass = Attachment->GetClass();
+	Data->Category = Attachment->GetAttachmentInfo().Category;
+
+	// Os offsets de cada child estão nos links, não no attachment em si
+	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
+	{
+		if (!Link.ChildInstance) continue;
+
+		UStoredAttachmentData* ChildData = BuildStoredDataFromAttachment(Link.ChildInstance);
+		if (ChildData)
+		{
+			ChildData->Offset = Link.Offset;
+			Data->Children.Add(ChildData);
+		}
+	}
+
+	return Data;
+}
+
+AAttachment* UWeaponBuilderComponent::SpawnAttachmentFromStoredData(UStoredAttachmentData* Data, USkeletalMeshComponent* ParentMesh, const FName ParentSocket)
+{
+	if (!Data || !*Data->AttachmentClass) return nullptr;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = ParentMesh->GetOwner();
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AAttachment* Attachment = ParentMesh->GetWorld()->SpawnActor<AAttachment>(
+		Data->AttachmentClass,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParams
+	);
+
+	if (!Attachment) return nullptr;
+
+	Attachment->BuildAttachment();
+
+	// Conectar ao pai usando socket + offset
+	if (ParentMesh && Attachment->MeshComponent)
+	{
+		Attachment->MeshComponent->AttachToComponent(
+			ParentMesh,
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			ParentSocket
+		);
+
+		Attachment->MeshComponent->AddLocalTransform(Data->Offset);
+	}
+
+	// Spawn filhos recursivamente
+	for (UStoredAttachmentData* ChildData : Data->Children)
+	{
+		FName ChildSocket = GetSocketFromCategory(ChildData->Category); // sua função atual
+		SpawnAttachmentFromStoredData(ChildData, Attachment->MeshComponent, ChildSocket);
+	}
+
+	return Attachment;
+}
+
