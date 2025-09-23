@@ -162,19 +162,17 @@ struct FAttachmentLink
 {
     GENERATED_BODY()
 
-    /** Class of the child attachment */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TSubclassOf<AAttachment> ChildClass;
+    UPROPERTY(EditAnywhere)
+    TArray<TSubclassOf<AAttachment>> ChildClasses;
 
-    /** Runtime instance */
     UPROPERTY(Transient)
-    AAttachment* ChildInstance = nullptr;
+    TArray<AAttachment*> ChildInstances;
 
     /** Positional offset relative to the socket */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
     FTransform Offset = FTransform::Identity;
 
-    /** Desired start slot when attaching this child to a rail parent */
+    /** Desired start slots when attaching children to a rail parent */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
-    int32 StartSlot = 0;
+    TArray<int32> StartSlots;
 };

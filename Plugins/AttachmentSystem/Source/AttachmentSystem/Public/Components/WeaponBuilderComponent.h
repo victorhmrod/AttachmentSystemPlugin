@@ -75,8 +75,5 @@ private:
 
 	/** Replication */
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	/** UI check: tests if an attachment can be placed at a desired transform using its BoxComponent */
-	bool CanPlaceAttachmentUI(AAttachment* Attachment, const FTransform& DesiredTransform) const;
 
 };

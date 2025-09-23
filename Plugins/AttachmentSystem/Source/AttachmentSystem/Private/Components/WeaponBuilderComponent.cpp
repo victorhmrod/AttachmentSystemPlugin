@@ -1,11 +1,9 @@
 #include "Components/WeaponBuilderComponent.h"
 
 #include "Engine/HitResult.h"
-#include "Engine/OverlapResult.h"
 #include "Actors/Attachment.h"
 #include "Actors/RailAttachment.h"
 #include "Actors/Weapon.h"
-#include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
 
 UWeaponBuilderComponent::UWeaponBuilderComponent()
@@ -89,118 +87,127 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         USkeletalMeshComponent* ParentMesh = Current->MeshComponent;
 
+        // 🔑 Loop through each link of this parent
         for (FAttachmentLink& Link : Current->ChildrenLinks)
         {
-            // Spawn child if needed
-            if (!Link.ChildInstance && *Link.ChildClass)
+            // Ensure arrays have the same size
+            for (int32 i = 0; i < Link.ChildClasses.Num(); i++)
             {
-                FActorSpawnParameters SpawnParams;
-                SpawnParams.Owner = GetOwner();
-                SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-                Link.ChildInstance = GetWorld()->SpawnActor<AAttachment>(
-                    Link.ChildClass,
-                    FVector::ZeroVector,
-                    FRotator::ZeroRotator,
-                    SpawnParams
-                );
-            }
-
-            AAttachment* ChildInstance = Link.ChildInstance;
-            if (!ChildInstance) continue;
-
-            ChildInstance->BuildAttachment();
-            USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
-
-            // Socket by category
-            FAttachmentInfo ChildInfo = ChildInstance->GetAttachmentInfo();
-            FName TargetSocket = GetSocketFromCategory(ChildInfo.Category);
-
-            // --- Case 1: Parent is a rail ---
-            if (ARailAttachment* Rail = Cast<ARailAttachment>(Current))
-            {
-                if (ChildInfo.bUseRail)
+                // Spawn child if needed
+                if (!Link.ChildInstances.IsValidIndex(i) || !Link.ChildInstances[i])
                 {
-                    // ---- Full Rail pipeline ----
-                    int32 DesiredSlot = ChildInstance->StartPosition;
-
-                    // 1. UI check (collision preview at socket position)
-                    FTransform DesiredTransform = ParentMesh->GetSocketTransform(TargetSocket);
-                    bool bUICheck = CanPlaceAttachmentUI(ChildInstance, DesiredTransform);
-
-                    // 2. Spline check (rail limits)
-                    bool bSplineCheck = (DesiredSlot + ChildInstance->Size) <= Rail->NumSlots;
-
-                    // 3. Bitmask check (slot occupancy)
-                    bool bMaskCheck = Rail->CanPlaceAttachment(ChildInstance);
-
-                    bool bSocketExists = ParentMesh->DoesSocketExist(TargetSocket);
-
-                    if (bUICheck && bSplineCheck && bMaskCheck && bSocketExists)
+                    if (*Link.ChildClasses[i])
                     {
-                        Rail->PlaceAttachment(ChildInstance);
+                        FActorSpawnParameters SpawnParams;
+                        SpawnParams.Owner = GetOwner();
+                        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-                        ChildMesh->AttachToComponent(
-                            ParentMesh,
-                            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                            TargetSocket
+                        AAttachment* Spawned = GetWorld()->SpawnActor<AAttachment>(
+                            Link.ChildClasses[i],
+                            FVector::ZeroVector,
+                            FRotator::ZeroRotator,
+                            SpawnParams
                         );
-                        ChildMesh->SetRelativeTransform(Link.Offset);
+                        if (Link.ChildInstances.IsValidIndex(i))
+                            Link.ChildInstances[i] = Spawned;
+                        else
+                            Link.ChildInstances.Add(Spawned);
+                    }
+                }
 
-                        UE_LOG(LogTemp, Warning, TEXT("Attached %s using RAIL pipeline to %s"),
-                            *ChildInstance->GetName(), *Rail->GetName());
+                AAttachment* ChildInstance = Link.ChildInstances.IsValidIndex(i) ? Link.ChildInstances[i] : nullptr;
+                if (!ChildInstance) continue;
+
+                ChildInstance->BuildAttachment();
+                USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
+
+                // Assign start slot if defined
+                int32 DesiredSlot = Link.StartSlots.IsValidIndex(i) ? Link.StartSlots[i] : 0;
+                ChildInstance->StartPosition = DesiredSlot;
+
+                // Socket by category
+                FAttachmentInfo ChildInfo = ChildInstance->GetAttachmentInfo();
+                FName TargetSocket = GetSocketFromCategory(ChildInfo.Category);
+
+                // --- Case 1: Parent is a rail ---
+                if (ARailAttachment* Rail = Cast<ARailAttachment>(Current))
+                {
+                    if (ChildInfo.bUseRail)
+                    {
+                        // 2. Spline check
+                        bool bSplineCheck = (DesiredSlot + ChildInstance->Size) <= Rail->NumSlots;
+
+                        // 3. Bitmask check
+                        bool bMaskCheck = Rail->CanPlaceAttachment(ChildInstance);
+
+                        bool bSocketExists = ParentMesh->DoesSocketExist(TargetSocket);
+
+                        if (bSplineCheck && bMaskCheck && bSocketExists)
+                        {
+                            Rail->PlaceAttachment(ChildInstance);
+
+                            ChildMesh->AttachToComponent(
+                                ParentMesh,
+                                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                                TargetSocket
+                            );
+                            ChildMesh->SetRelativeTransform(Link.Offset);
+
+                            UE_LOG(LogTemp, Warning, TEXT("Attached %s using RAIL pipeline to %s (Slot=%d)"),
+                                *ChildInstance->GetName(), *Rail->GetName(), DesiredSlot);
+                        }
+                        else
+                        {
+                            UE_LOG(LogTemp, Error, TEXT("FAILED: %s could not attach to Rail %s (Spline=%d Mask=%d Socket=%d Slot=%d)"),
+                                *ChildInstance->GetName(),
+                                *Rail->GetName(),
+                                bSplineCheck, bMaskCheck, bSocketExists, DesiredSlot);
+                        }
                     }
                     else
                     {
-                        UE_LOG(LogTemp, Error, TEXT("FAILED: %s could not attach to Rail %s (UI=%d Spline=%d Mask=%d Socket=%d)"),
-                            *ChildInstance->GetName(),
-                            *Rail->GetName(),
-                            bUICheck, bSplineCheck, bMaskCheck, bSocketExists);
+                        // Standard attach even if parent is a rail
+                        if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
+                        {
+                            ChildMesh->AttachToComponent(
+                                ParentMesh,
+                                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                                TargetSocket
+                            );
+                            ChildMesh->SetRelativeTransform(Link.Offset);
+
+                            UE_LOG(LogTemp, Warning, TEXT("Attached %s using STANDARD pipeline on rail %s"),
+                                *ChildInstance->GetName(), *Rail->GetName());
+                        }
                     }
                 }
-                else
+                // --- Case 2: Normal parent (non-rail) ---
+                else if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
                 {
-                    // ---- Standard pipeline, even though parent is a rail ----
-                    if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
-                    {
-                        ChildMesh->AttachToComponent(
-                            ParentMesh,
-                            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                            TargetSocket
-                        );
-                        ChildMesh->SetRelativeTransform(Link.Offset);
+                    ChildMesh->AttachToComponent(
+                        ParentMesh,
+                        FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                        TargetSocket
+                    );
+                    ChildMesh->SetRelativeTransform(Link.Offset);
 
-                        UE_LOG(LogTemp, Warning, TEXT("Attached %s using STANDARD pipeline on rail %s"),
-                            *ChildInstance->GetName(), *Rail->GetName());
-                    }
+                    UE_LOG(LogTemp, Warning, TEXT("Attached %s to non-rail parent %s"),
+                        *ChildInstance->GetName(), *Current->GetName());
                 }
-            }
-            // --- Case 2: Normal parent (non-rail) ---
-            else if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
-            {
-                ChildMesh->AttachToComponent(
-                    ParentMesh,
-                    FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                    TargetSocket
-                );
-                ChildMesh->SetRelativeTransform(Link.Offset);
 
-                UE_LOG(LogTemp, Warning, TEXT("Attached %s to non-rail parent %s"),
-                    *ChildInstance->GetName(), *Current->GetName());
-            }
+                // Continue BFS
+                if (!Visited.Contains(ChildInstance))
+                {
+                    Queue.Enqueue(ChildInstance);
+                    Visited.Add(ChildInstance);
+                }
 
-            // Continue BFS
-            if (!Visited.Contains(ChildInstance))
-            {
-                Queue.Enqueue(ChildInstance);
-                Visited.Add(ChildInstance);
-            }
-
-            // Register globally
-            if (!SpawnedAttachments.Contains(ChildInstance))
-            {
-                SpawnedAttachments.Add(ChildInstance);
-                SpawnedMeshes.Add(ChildInstance, ChildMesh);
+                // Register globally
+                if (!SpawnedAttachments.Contains(ChildInstance))
+                {
+                    SpawnedAttachments.Add(ChildInstance);
+                    SpawnedMeshes.Add(ChildInstance, ChildMesh);
+                }
             }
         }
     }
@@ -215,46 +222,52 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 
 	for (FAttachmentLink& Link : ParentAttachment->ChildrenLinks)
 	{
-		AAttachment* ChildInstance = Link.ChildInstance;
-
-		// Spawn child if it doesn't exist yet
-		if (!ChildInstance && *Link.ChildClass)
+		// Iterate over all defined child classes
+		for (TSubclassOf<AAttachment> ChildClass : Link.ChildClasses)
 		{
+			if (!*ChildClass) continue;
+
+			// Always spawn a new instance (multiple children of same class allowed)
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.Owner = GetOwner();
 			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-			ChildInstance = GetWorld()->SpawnActor<AAttachment>(
-				Link.ChildClass,
+			AAttachment* ChildInstance = GetWorld()->SpawnActor<AAttachment>(
+				ChildClass,
 				FVector::ZeroVector,
 				FRotator::ZeroRotator,
 				SpawnParams
 			);
+
+			if (!ChildInstance) continue;
+
+			ChildInstance->BuildAttachment();
+			USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
+
+			// Use category to resolve target socket
+			const FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
+
+			// Attach to parent if socket exists
+			if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
+			{
+				ChildMesh->AttachToComponent(
+					ParentMesh,
+					FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+					TargetSocket
+				);
+				ChildMesh->SetRelativeTransform(Link.Offset);
+			}
+
+			// Recursively build this child's subtree
+			BuildWeaponFromAttachmentGraph(ChildInstance, Visited);
+
+			// Register inside the link
+			Link.ChildInstances.Add(ChildInstance);
+
+			// Register globally
+			SpawnedAttachments.Add(ChildInstance);
+			SpawnedMeshes.Add(ChildInstance, ChildMesh);
 		}
-
-		if (!ChildInstance) continue;
-
-		ChildInstance->BuildAttachment();
-		USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
-
-		// Use attachment category as socket
-		const FName TargetSocket = GetSocketFromCategory(ChildInstance->GetAttachmentInfo().Category);
-
-		if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
-		{
-			ChildMesh->AttachToComponent(
-				ParentMesh,
-				FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-				TargetSocket
-			);
-		}
-
-		// Recurse into children
-		BuildWeaponFromAttachmentGraph(ChildInstance, Visited);
-
-		// Register spawned instance
-		SpawnedAttachments.Add(ChildInstance);
-		SpawnedMeshes.Add(ChildInstance, ChildMesh);
 	}
 }
 
@@ -284,15 +297,19 @@ void UWeaponBuilderComponent::ClearAttachmentRecursive(AAttachment* Attachment, 
 	if (!Attachment || Visited.Contains(Attachment)) return;
 	Visited.Add(Attachment);
 
+	// Recursively clear all children in this link
 	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
 	{
-		AAttachment* Child = Link.ChildInstance;
-		if (Child)
+		for (AAttachment* Child : Link.ChildInstances)
 		{
-			ClearAttachmentRecursive(Child, Visited);
+			if (Child)
+			{
+				ClearAttachmentRecursive(Child, Visited);
+			}
 		}
 	}
 
+	// Detach this attachment's mesh
 	if (Attachment->MeshComponent)
 	{
 		Attachment->MeshComponent->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
@@ -312,7 +329,10 @@ AAttachment* UWeaponBuilderComponent::GetAttachmentAtSocket(const EAttachmentCat
 	return nullptr;
 }
 
-AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attachment, const EAttachmentCategory TargetCategory, TSet<AAttachment*>& Visited)
+AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(
+	AAttachment* Attachment,
+	const EAttachmentCategory TargetCategory,
+	TSet<AAttachment*>& Visited)
 {
 	if (!Attachment || Visited.Contains(Attachment)) return nullptr;
 	Visited.Add(Attachment);
@@ -323,24 +343,28 @@ AAttachment* UWeaponBuilderComponent::FindAttachmentRecursive(AAttachment* Attac
 		return Attachment;
 	}
 
-	// Traverse all children links
+	// Traverse all children in all links
 	for (const FAttachmentLink& Link : Attachment->ChildrenLinks)
 	{
-		AAttachment* ChildInstance = Link.ChildInstance;
-		if (!ChildInstance) continue;
-
-		// Check if the child's category matches
-		if (ChildInstance->GetAttachmentInfo().Category == TargetCategory)
+		for (AAttachment* Child : Link.ChildInstances)
 		{
-			return ChildInstance;
-		}
+			if (!Child) continue;
 
-		// Recursively search in the child branch
-		AAttachment* Found = FindAttachmentRecursive(ChildInstance, TargetCategory, Visited);
-		if (Found) return Found;
+			// Check if this child matches the category
+			if (Child->GetAttachmentInfo().Category == TargetCategory)
+			{
+				return Child;
+			}
+
+			// Recursively search deeper
+			if (AAttachment* Found = FindAttachmentRecursive(Child, TargetCategory, Visited))
+			{
+				return Found;
+			}
+		}
 	}
 
-	return nullptr;
+	return nullptr; // Nothing found in this branch
 }
 
 FName UWeaponBuilderComponent::GetSocketFromCategory(EAttachmentCategory Category) const
@@ -351,49 +375,6 @@ FName UWeaponBuilderComponent::GetSocketFromCategory(EAttachmentCategory Categor
 	return FName(EnumPtr->GetNameStringByValue(static_cast<int64>(Category)));
 }
 
-
 void UWeaponBuilderComponent::AddBehaviorComponent(AAttachment* Attachment)
 {
-}
-
-
-bool UWeaponBuilderComponent::CanPlaceAttachmentUI(AAttachment* Attachment, const FTransform& DesiredTransform) const
-{
-	if (!Attachment) return false;
-
-	UBoxComponent* Box = Attachment->GetBoxComponent();
-	if (!Box) return true; // no box = no collision
-
-	FVector Extent = Box->GetUnscaledBoxExtent();
-
-	// Overlap test
-	TArray<FOverlapResult> Overlaps;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(Attachment);
-	Params.AddIgnoredActor(GetOwner());
-
-	bool bHit = GetWorld()->OverlapMultiByChannel(
-		Overlaps,
-		DesiredTransform.GetLocation(),
-		DesiredTransform.GetRotation(),
-		ECC_GameTraceChannel1, // custom channel for attachments
-		FCollisionShape::MakeBox(Extent),
-		Params
-	);
-
-#if WITH_EDITOR
-	// Draw preview box (green = valid, red = invalid)
-	FColor DebugColor = bHit ? FColor::Red : FColor::Green;
-	DrawDebugBox(
-		GetWorld(),
-		DesiredTransform.GetLocation(),
-		Extent,
-		DesiredTransform.GetRotation(),
-		DebugColor,
-		false,
-		0.1f // duration
-	);
-#endif
-
-	return !bHit;
 }
