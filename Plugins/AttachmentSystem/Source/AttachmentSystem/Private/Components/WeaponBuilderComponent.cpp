@@ -116,9 +116,10 @@ void UWeaponBuilderComponent::BuildWeapon()
                 }
             }
 
-            // Loop over all spawned children
-            for (AAttachment* ChildInstance : Link.ChildInstances)
+            // NOTE: switched to index-based loop so we can null-out failed spawns safely
+            for (int32 i = 0; i < Link.ChildInstances.Num(); ++i)
             {
+                AAttachment* ChildInstance = Link.ChildInstances[i];
                 if (!ChildInstance) continue;
 
                 ChildInstance->BuildAttachment();
@@ -127,6 +128,8 @@ void UWeaponBuilderComponent::BuildWeapon()
                 // Socket by category
                 FAttachmentInfo ChildInfo = ChildInstance->GetAttachmentInfo();
                 FName TargetSocket = GetSocketFromCategory(ChildInfo.Category);
+
+                bool bShouldRegister = false; // NEW: only register/enqueue if successfully placed/attached
 
                 // --- Case 1: Parent is a rail ---
                 if (ARailAttachment* Rail = Cast<ARailAttachment>(Current))
@@ -192,6 +195,7 @@ void UWeaponBuilderComponent::BuildWeapon()
                                     SocketZ);
 
                                 bPlaced = true;
+                                bShouldRegister = true; // NEW
                                 break;
                             }
 
@@ -200,14 +204,18 @@ void UWeaponBuilderComponent::BuildWeapon()
 
                         if (!bPlaced)
                         {
-                            UE_LOG(LogTemp, Error,
-                                TEXT("FAILED: %s could not attach to Rail %s"),
-                                *ChildInstance->GetName(),
-                                *Rail->GetName());
+                            UE_LOG(LogTemp, Warning,
+                                TEXT("Rejected %s -> did not pass checks (rail)"),
+                                *ChildInstance->GetName());
+
+                            // NEW: destroy failed piece and clear the slot in the array
+                            ChildInstance->Destroy();
+                            Link.ChildInstances[i] = nullptr;
                         }
                     }
                     else
                     {
+                        // ---- Standard pipeline, even though parent is a rail ----
                         if (ParentMesh && ChildMesh && ParentMesh->DoesSocketExist(TargetSocket))
                         {
                             ChildMesh->AttachToComponent(
@@ -221,6 +229,17 @@ void UWeaponBuilderComponent::BuildWeapon()
                                 TEXT("Attached %s using STANDARD pipeline on rail %s"),
                                 *ChildInstance->GetName(),
                                 *Rail->GetName());
+
+                            bShouldRegister = true; // NEW: standard attached ok
+                        }
+                        else
+                        {
+                            // NEW: destroy if cannot attach even in standard case
+                            UE_LOG(LogTemp, Warning,
+                                TEXT("Rejected %s -> no valid socket for STANDARD pipeline"),
+                                *ChildInstance->GetName());
+                            ChildInstance->Destroy();
+                            Link.ChildInstances[i] = nullptr;
                         }
                     }
                 }
@@ -237,24 +256,37 @@ void UWeaponBuilderComponent::BuildWeapon()
                     UE_LOG(LogTemp, Log,
                         TEXT("Attached %s to non-rail parent %s"),
                         *ChildInstance->GetName(), *Current->GetName());
+
+                    bShouldRegister = true; // NEW
+                }
+                else
+                {
+                    // NEW: couldn’t attach to non-rail either → destroy
+                    UE_LOG(LogTemp, Warning,
+                        TEXT("Rejected %s -> no valid socket on non-rail parent"),
+                        *ChildInstance->GetName());
+                    ChildInstance->Destroy();
+                    Link.ChildInstances[i] = nullptr;
                 }
 
-                // Continue BFS
-                if (!Visited.Contains(ChildInstance))
+                // --- NEW: only enqueue/register if we actually attached/placed it ---
+                if (bShouldRegister)
                 {
-                    Queue.Enqueue(ChildInstance);
-                    Visited.Add(ChildInstance);
-                }
+                    if (!Visited.Contains(ChildInstance))
+                    {
+                        Queue.Enqueue(ChildInstance);
+                        Visited.Add(ChildInstance);
+                    }
 
-                // Register globally
-                if (!SpawnedAttachments.Contains(ChildInstance))
-                {
-                    SpawnedAttachments.Add(ChildInstance);
-                    SpawnedMeshes.Add(ChildInstance, ChildMesh);
+                    if (!SpawnedAttachments.Contains(ChildInstance))
+                    {
+                        SpawnedAttachments.Add(ChildInstance);
+                        SpawnedMeshes.Add(ChildInstance, ChildMesh);
+                    }
                 }
-            }
-        }
-    }
+            } // end for i
+        } // end for Link
+    } // end BFS
 }
 
 bool UWeaponBuilderComponent::DoesCollideWithRail(
