@@ -174,5 +174,5 @@ struct FAttachmentLink
 
     /** Desired start slots when attaching children to a rail parent */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
-    TArray<int32> StartSlots;
+    int32 StartSlot;
 };

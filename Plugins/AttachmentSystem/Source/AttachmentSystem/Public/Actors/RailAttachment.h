@@ -39,6 +39,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	bool CanPlaceAttachment(AAttachment* Attachment) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Rail")
+	float GetSplineLength() const;
+
+	UFUNCTION(BlueprintCallable, Category="Rail")
+	int32 GetSlotFromDistance(float Distance) const;
+
 	/** Places attachment at its StartPosition (updates mask + attaches to spline) */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	bool PlaceAttachment(AAttachment* Attachment);

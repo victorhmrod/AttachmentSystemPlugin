@@ -33,6 +33,9 @@ public:
 	/** Assembles a weapon from the base list of attachments */
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Builder")
 	void BuildWeapon();
+	
+	bool DoesCollideWithRail(const FTransform& TestTransform, USkeletalMeshComponent* ChildMesh,
+	                         AActor* IgnoredActor) const;
 
 	/** Disassembles the weapon (Detaches all attachments) */
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Builder")

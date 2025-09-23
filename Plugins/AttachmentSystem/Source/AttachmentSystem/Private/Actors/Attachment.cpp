@@ -48,4 +48,15 @@ void AAttachment::BuildAttachment()
 	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' build successfully."), *ID.ToString());
 
 	MeshComponent->SetSkeletalMeshAsset(AttachmentInfo.Mesh.LoadSynchronous());
+
+	// Enable query-only overlaps on a common channel (WorldDynamic)
+	if (MeshComponent)
+	{
+		MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		MeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
+		MeshComponent->SetGenerateOverlapEvents(true);            // not required for OverlapMulti*, but helpful
+
+		MeshComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+		MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap); // attachments see each other
+	}
 }

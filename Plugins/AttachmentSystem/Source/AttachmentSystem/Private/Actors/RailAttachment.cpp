@@ -35,6 +35,22 @@ bool ARailAttachment::CanPlaceAttachment(AAttachment* Attachment) const
     return (OccupancyMask & Mask) == 0ull;
 }
 
+float ARailAttachment::GetSplineLength() const
+{
+    return RailSpline ? RailSpline->GetSplineLength() : 0.f;
+}
+
+int32 ARailAttachment::GetSlotFromDistance(float Distance) const
+{
+    if (!RailSpline || NumSlots <= 0) return 0;
+
+    const float RailLength = RailSpline->GetSplineLength();
+    float Normalized = FMath::Clamp(Distance / RailLength, 0.f, 1.f);
+
+    int32 SlotIndex = FMath::FloorToInt(Normalized * (NumSlots - 1));
+    return SlotIndex;
+}
+
 bool ARailAttachment::PlaceAttachment(AAttachment* Attachment)
 {
     if (!CanPlaceAttachment(Attachment)) return false;
