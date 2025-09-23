@@ -7,6 +7,8 @@
 
 class AWeapon;
 class AAttachment;
+// Forward declaration for rail logic
+class ARailAttachment;
 
 /**
 * Component responsible for mounting/dismounting weapons using an attachment graph.
@@ -48,13 +50,13 @@ public:
 protected:
 	UPROPERTY(Replicated)
 	TObjectPtr<AWeapon> Weapon;
-	
+    
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Parts")
 	TArray<TSubclassOf<AAttachment>> BaseAttachments;
 
 	UPROPERTY(Transient)
 	TArray<AAttachment*> SpawnedAttachments;
-	
+    
 	UPROPERTY()
 	TMap<AAttachment*, USceneComponent*> SpawnedMeshes;
 
@@ -73,8 +75,8 @@ private:
 
 	/** Replication */
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	/** UI check: tests if an attachment can be placed at a desired transform using its BoxComponent */
+	bool CanPlaceAttachmentUI(AAttachment* Attachment, const FTransform& DesiredTransform) const;
 
-	UStoredAttachmentData* BuildStoredDataFromAttachment(AAttachment* Attachment);
-	AAttachment* SpawnAttachmentFromStoredData(UStoredAttachmentData* Data, USkeletalMeshComponent* ParentMesh,
-	                                           FName ParentSocket);
 };

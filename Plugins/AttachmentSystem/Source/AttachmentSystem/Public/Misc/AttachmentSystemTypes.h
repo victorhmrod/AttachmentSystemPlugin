@@ -143,6 +143,18 @@ struct FAttachmentInfo : public FTableRowBase
     
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory")
     EAttachmentCategory Category;
+
+    /** How many rail slots ("bumps") this attachment occupies. Defaults to 1. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rail")
+    int32 Size = 1;
+
+    /** Starting slot index when mounted on a rail. Defaults to 0 (leftmost). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rail")
+    int32 StartSlot = 0;
+    /** New: if true, we run full Rail validation (UI + Spline + Bitmask).
+       If false, we just use standard socket + collision checks */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+    bool bUseRail = false;
 };
 
 USTRUCT(BlueprintType)
@@ -150,54 +162,19 @@ struct FAttachmentLink
 {
     GENERATED_BODY()
 
-    // Class of the child attachment
+    /** Class of the child attachment */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TSubclassOf<AAttachment> ChildClass;
 
-    // Runtime instance
+    /** Runtime instance */
     UPROPERTY(Transient)
     AAttachment* ChildInstance = nullptr;
 
-    // Positional offset relative to the socket
+    /** Positional offset relative to the socket */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
     FTransform Offset = FTransform::Identity;
-};
 
-USTRUCT(BlueprintType)
-struct FStoredAttachmentFlat
-{
-    GENERATED_BODY()
-
-    UPROPERTY(BlueprintReadWrite)
-    TSubclassOf<AAttachment> AttachmentClass;
-
-    UPROPERTY(BlueprintReadWrite)
-    EAttachmentCategory Category;
-
-    UPROPERTY(BlueprintReadWrite)
-    FVector Offset;
-
-    UPROPERTY(BlueprintReadWrite)
-    int32 ParentIndex;
-};
-
-UCLASS(BlueprintType)
-class UStoredAttachmentData : public UObject
-{
-    GENERATED_BODY()
-
-public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-    TSubclassOf<class AAttachment> AttachmentClass;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-    EAttachmentCategory Category;
-
-    // Offset relativo ao socket do pai
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-    FTransform Offset;
-
-    // Filhos do attachment (recursivo)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-    TArray<TObjectPtr<UStoredAttachmentData>> Children;
+    /** Desired start slot when attaching this child to a rail parent */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
+    int32 StartSlot = 0;
 };

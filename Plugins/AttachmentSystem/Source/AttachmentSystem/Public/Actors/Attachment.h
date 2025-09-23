@@ -29,6 +29,12 @@ private:
 
 #pragma region Info
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 StartPosition = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 Size = 1;
+	
 	UFUNCTION()
 	void BuildAttachment();
 	
@@ -55,8 +61,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Graph")
 	TArray<FAttachmentLink> ChildrenLinks;
-
-	// Edges: all attachments connected to this
 
 	USkeletalMeshComponent* GetMeshComponent() const
 	{
