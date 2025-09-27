@@ -8,6 +8,12 @@
 
 class USplineComponent;
 
+/**
+ * @brief Specialized attachment that represents a rail (e.g., Picatinny, M-LOK).
+ * 
+ * - Provides slot-based placement (using spline + occupancy mask).
+ * - Manages which attachments are mounted along the rail.
+ */
 UCLASS()
 class ATTACHMENTSYSTEMPLUGIN_API ARailAttachment : public AAttachment
 {
@@ -16,47 +22,92 @@ class ATTACHMENTSYSTEMPLUGIN_API ARailAttachment : public AAttachment
 public:
 	ARailAttachment();
 
-	/** Number of slots (bumps) in this rail */
+	/* =============================
+	 * Rail Configuration
+	 * ============================= */
+
+	/** Total number of slots (bumps) available on this rail. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
 	int32 NumSlots = 15;
 
-	/** Distance between slots (in cm, adjust for your Picatinny scale) */
+	/** Distance between slots (cm). Defaults to ~1 inch (2.54 cm). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
-	float SlotSpacing = 2.54f; // ~1 inch by default
+	float SlotSpacing = 2.54f;
 
-	/** Spline that defines the rail geometry */
+	/** Spline that defines the physical rail geometry in 3D space. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Rail")
 	TObjectPtr<USplineComponent> RailSpline;
 
-	/** Occupancy bitmask */
+	/* =============================
+	 * Runtime State
+	 * ============================= */
+
+	/** Bitmask representing slot occupancy (1 = taken, 0 = free). */
 	uint64 OccupancyMask = 0;
 
-	/** Set of attachments mounted to this rail */
+	/** Set of all attachments currently mounted to this rail. */
 	UPROPERTY()
 	TSet<AAttachment*> MountedAttachments;
 
-	/** Checks if an attachment fits inside rail limits + occupancy */
+
+	/* =============================
+	 * Rail Operations
+	 * ============================= */
+
+	/** 
+	 * Checks if an attachment can fit within rail limits and current occupancy. 
+	 *
+	 * @param Attachment  The attachment to test.
+	 * @return true if placement is valid, false otherwise.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	bool CanPlaceAttachment(AAttachment* Attachment) const;
 
+	/** @return Total spline length of this rail (in world units). */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Rail")
 	float GetSplineLength() const;
 
+	/** 
+	 * Converts a world distance along the spline into a slot index. 
+	 *
+	 * @param Distance  Distance along spline.
+	 * @return          Closest slot index at that distance.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	int32 GetSlotFromDistance(float Distance) const;
 
-	/** Places attachment at its StartPosition (updates mask + attaches to spline) */
+	/** 
+	 * Places an attachment at its StartPosition (updates occupancy + attaches to spline).
+	 *
+	 * @param Attachment  Attachment to place.
+	 * @return true if successfully placed, false if blocked or invalid.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	bool PlaceAttachment(AAttachment* Attachment);
 
-	/** Removes attachment from this rail */
+	/** 
+	 * Removes a previously mounted attachment from this rail.
+	 * Updates occupancy mask and detaches from spline.
+	 */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	void RemoveAttachment(AAttachment* Attachment);
 
-	/** Returns world transform of a given slot index along the spline */
+	/** 
+	 * Gets the world transform of a given slot index along the spline.
+	 *
+	 * @param SlotIndex  Slot index (0..NumSlots-1).
+	 * @return           World transform at that slot.
+	 */
 	FTransform GetSlotTransform(int32 SlotIndex) const;
 
+
 private:
-	// Utility to build a mask for the given size and start slot
-	uint64 MakeMask(int32 StartSlot, int32 ItemSize) const; // was: Size
+	/** 
+	 * Utility to generate a bitmask for a contiguous slot range.
+	 *
+	 * @param StartSlot  Index of first slot.
+	 * @param ItemSize   Number of slots the item occupies.
+	 * @return           Bitmask with those slots marked as occupied.
+	 */
+	uint64 MakeMask(int32 StartSlot, int32 ItemSize) const;
 };

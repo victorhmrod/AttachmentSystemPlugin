@@ -127,54 +127,217 @@ enum class EAttachmentCategory : uint8
     Charm                  UMETA(DisplayName = "Charm")
 };
 
-USTRUCT(BlueprintType, Category = "Attachments")
-struct FAttachmentInfo : public FTableRowBase
+/**
+ * @brief Defines the method used to modify a weapon stat.
+ * This is intended to be used by attachments and other modifiers.
+ */
+ 
+UENUM(BlueprintType)
+enum class EStatModType : uint8
+{
+    /** Adds or subtracts a flat value from the stat (e.g., +10 Ergonomics). */
+    SMT_Flat        UMETA(DisplayName = "Flat Additive"),
+
+    /** Multiplies the stat by a percentage (e.g., -15% Recoil, which is a x0.85 multiplier). */
+    SMT_Percentage  UMETA(DisplayName = "Percentage Multiplier"),
+
+    /** Completely replaces the base stat with a new value. */
+    SMT_Override    UMETA(DisplayName = "Override"),
+
+    SMT_MAX          UMETA(DisplayName = "MAX_NONE")
+};
+
+/**
+ * @brief Defines the different types of weapon stats
+ */
+ 
+UENUM(BlueprintType)
+enum class EWeaponStat : uint8
+{
+    /* =============================
+     * Recoil Control
+     * ============================= */
+    /** Vertical kick when firing. Lower = easier control. */
+    EWS_VerticalRecoil      UMETA(DisplayName = "Vertical Recoil"),
+
+    /** Horizontal sway when firing. Lower = more stable aim. */
+    EWS_HorizontalRecoil    UMETA(DisplayName = "Horizontal Recoil"),
+
+    /** Camera shake effect applied on shot. */
+    EWS_CameraRecoil        UMETA(DisplayName = "Camera Recoil"),
+
+    /* =============================
+     * Handling / Ergonomics
+     * ============================= */
+    /** General weapon handling, ADS speed, equip speed, etc. */
+    EWS_Ergonomics          UMETA(DisplayName = "Ergonomics"),
+
+    /** Weapon weight affecting handling, stamina, and sway. */
+    EWS_Weight              UMETA(DisplayName = "Weight"),
+
+    /* =============================
+     * Ballistics / Performance
+     * ============================= */
+    /** Precision of shots relative to crosshair. */
+    EWS_Accuracy            UMETA(DisplayName = "Accuracy"),
+
+    /** Bullet velocity (m/s). Higher = less drop and faster hit. */
+    EWS_MuzzleVelocity      UMETA(DisplayName = "Muzzle Velocity"),
+
+    /** Effective range before damage dropoff. */
+    EWS_Range               UMETA(DisplayName = "Range"),
+
+    /** Rate of fire (Rounds Per Minute). */
+    EWS_RoundsPerMinute     UMETA(DisplayName = "Rounds Per Minute"),
+
+    /* =============================
+     * Advanced Spread Behavior
+     * ============================= */
+    /** How quickly bullets align after continuous fire. */
+    EWS_Convergence         UMETA(DisplayName = "Convergence"),
+
+    /** Random spread / inaccuracy added to shots. */
+    EWS_Dispersion          UMETA(DisplayName = "Dispersion"),
+
+    /* =============================
+     * Utility
+     * ============================= */
+    /** Placeholder / invalid value. */
+    EWS_MAX                 UMETA(DisplayName = "MAX_NONE")
+};
+
+USTRUCT(BlueprintType)
+struct FStatModifier
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Attachment|Display")
-    FName Display_Name;
+    /* =============================
+     * Target Stat
+     * ============================= */
+    /** Which weapon stat this modifier affects (e.g., Vertical Recoil, Accuracy). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+    EWeaponStat StatToModify;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Attachment|Display")
-    FText Display_Description ;
+    /* =============================
+     * Modification Type
+     * ============================= */
+    /** How the value is applied:
+     *  - Flat        → Adds/subtracts a constant (e.g., +10 Ergonomics).
+     *  - Percentage  → Multiplies base value (e.g., -15% Recoil).
+     *  - Override    → Replaces base value completely.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+    EStatModType ModificationType;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Attachment|Display")
-    TSoftObjectPtr<USkeletalMesh> Mesh;
-    
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Attachment")
-    EAttachmentCategory Category;
-
-    /** New: if true, we run full Rail validation (UI + Spline + Bitmask).
-       If false, we just use standard socket + collision checks */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
-    bool bUseRail = false;
-    
-    /** How many rail slots ("bumps") this attachment occupies. Defaults to 1. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attachment|Rail")
-    int32 Size = 1;
-
-    /** Starting slot index when mounted on a rail. Defaults to 0 (leftmost). */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attachment|Rail")
-    int32 StartSlot = 0;
-    
+    /* =============================
+     * Value
+     * ============================= */
+    /** Numerical strength of the modifier.
+     *  - Flat: exact units (e.g., +5 Ergonomics).
+     *  - Percentage: expressed as fraction (e.g., 0.85 = -15%).
+     *  - Override: absolute value to force.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
+    float Value = 0.f;
 };
 
 USTRUCT(BlueprintType)
 struct FAttachmentLink
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
-    TArray<TSubclassOf<AAttachment>> ChildClasses;
+	/* =============================
+	 * Blueprint Setup
+	 * ============================= */
 
-    UPROPERTY(Transient)
-    TArray<AAttachment*> ChildInstances;
+	/** Classes of attachments that can be spawned as children. 
+	 *  Defined in DataTables or per-weapon setup.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+	TArray<TSubclassOf<AAttachment>> ChildClasses;
 
-    /** Positional offset relative to the socket */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-    FTransform Offset = FTransform::Identity;
+	/** Local transform offset relative to the parent socket. 
+	 *  Used for precise alignment when attaching. 
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+	FTransform Offset = FTransform::Identity;
 
-    /** Desired start slots when attaching children to a rail parent */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
-    int32 StartSlot;
+	/** Desired starting slot index when mounted on a rail parent. 
+	 *  Example: if StartSlot = 2, this attachment begins at the 3rd bump.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Rail")
+	int32 StartSlot = 0;
+
+	/* =============================
+	 * Runtime State
+	 * ============================= */
+
+	/** Live attachment instances spawned from ChildClasses.
+	 *  Populated/managed at runtime (not serialized).
+	 */
+	UPROPERTY(Transient)
+	TArray<AAttachment*> ChildInstances;
+};
+
+USTRUCT(BlueprintType, Category="Attachments")
+struct FAttachmentInfo : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/* =============================
+	 * Display
+	 * ============================= */
+    
+	/** Short internal name / ID of the attachment. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Display")
+	FName Display_Name;
+
+	/** Full localized description shown in UI/tooltip. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Display")
+	FText Display_Description;
+
+	/** Skeletal mesh to represent this attachment in-game. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Display")
+	TSoftObjectPtr<USkeletalMesh> Mesh;
+
+
+	/* =============================
+	 * Classification
+	 * ============================= */
+
+	/** High-level category (optic, barrel, stock, etc.). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Classification")
+	EAttachmentCategory Category;
+
+
+	/* =============================
+	 * Stats
+	 * ============================= */
+
+	/** Modifiers applied to the owning weapon when attached. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Stats")
+	TArray<FStatModifier> Modifiers;
+
+
+	/* =============================
+	 * Rail Configuration
+	 * ============================= */
+
+	/** If true → validates against rail rules (UI, spline, bitmask). 
+	 *  If false → attaches via basic socket/collision checks.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
+	bool bUseRail = false;
+
+	/** How many rail slots ("bumps") this attachment occupies. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
+	int32 Size = 1;
+
+	/** Slot index when mounted on a rail (0 = leftmost). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
+	int32 StartSlot = 0;
+
+	/** Durabilidade base desse attachment */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+	float Durability = 100.f; // default
 };

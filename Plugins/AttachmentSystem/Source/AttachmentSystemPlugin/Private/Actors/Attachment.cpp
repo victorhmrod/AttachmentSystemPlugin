@@ -60,3 +60,4 @@ void AAttachment::BuildAttachment()
 		MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap); // attachments see each other
 	}
 }
+	

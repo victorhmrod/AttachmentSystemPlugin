@@ -64,10 +64,10 @@ void UWeaponBuilderComponent::BuildWeapon()
 
         RootInstance->BuildAttachment();
 
-        if (Weapon && Weapon->GetRootComponentMesh() && RootInstance->MeshComponent)
+        if (Weapon && Weapon->GetRoot() && RootInstance->MeshComponent)
         {
             RootInstance->MeshComponent->AttachToComponent(
-                Weapon->GetRootComponentMesh(),
+                Weapon->GetRoot(),
                 FAttachmentTransformRules::SnapToTargetNotIncludingScale
             );
             RootInstance->MeshComponent->SetRelativeTransform(FTransform::Identity);
@@ -137,7 +137,7 @@ void UWeaponBuilderComponent::BuildWeapon()
                     if (ChildInfo.bUseRail)
                     {
                         const float RailLength = Rail->GetSplineLength();
-                        const float Step = 2.5f;
+                        constexpr float Step = 2.5f;
 
                         FVector SocketLoc = ParentMesh->GetSocketLocation(TargetSocket);
                         float SocketZ = SocketLoc.Z;
@@ -234,7 +234,7 @@ void UWeaponBuilderComponent::BuildWeapon()
                         }
                         else
                         {
-                            // NEW: destroy if cannot attach even in standard case
+                            // NEW: destroy if we cannot attach even in standard case
                             UE_LOG(LogTemp, Warning,
                                 TEXT("Rejected %s -> no valid socket for STANDARD pipeline"),
                                 *ChildInstance->GetName());
@@ -261,7 +261,7 @@ void UWeaponBuilderComponent::BuildWeapon()
                 }
                 else
                 {
-                    // NEW: couldn’t attach to non-rail either → destroy
+                    // NEW: couldn't attach to non-rail either → destroy
                     UE_LOG(LogTemp, Warning,
                         TEXT("Rejected %s -> no valid socket on non-rail parent"),
                         *ChildInstance->GetName());
