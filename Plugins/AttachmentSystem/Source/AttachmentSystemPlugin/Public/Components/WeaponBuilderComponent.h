@@ -7,13 +7,15 @@
 
 class AWeapon;
 class AAttachment;
-// Forward declaration for rail logic
 class ARailAttachment;
 
 /**
 * Component responsible for mounting/dismounting weapons using an attachment graph.
 * Each edge of the graph contains the parent's socket information.
 */
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponBuilt, const TArray<AAttachment*>&, SpawnedAttachments);
+
 UCLASS(meta = (BlueprintSpawnableComponent))
 class ATTACHMENTSYSTEMPLUGIN_API UWeaponBuilderComponent : public UActorComponent
 {
@@ -100,6 +102,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Builder")
 	FORCEINLINE TArray<AAttachment*> GetSpawnedAttachments() { return SpawnedAttachments; }
 
+	// Called whenever the weapon is (re)built and attachments are spawned
+	UPROPERTY(BlueprintAssignable, Category="Weapon|Events")
+	FOnWeaponBuilt OnWeaponBuilt;
+	
 	/** 
  * Adds extra runtime functionality depending on the attachment type.
  *

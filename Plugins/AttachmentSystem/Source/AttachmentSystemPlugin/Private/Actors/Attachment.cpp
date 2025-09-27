@@ -4,30 +4,36 @@ void AAttachment::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	BuildAttachment();
+	// Load DataTable definition after components are ready
+	LoadAttachmentInfo();
 }
 
 AAttachment::AAttachment()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	// Create skeletal mesh component for the attachment
 	MeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(FName{TEXTVIEW("MeshComponent")});
+	
+	// Set mesh as root component
 	SetRootComponent(MeshComponent);
 }
 
 void AAttachment::BeginPlay()
 {
 	Super::BeginPlay();
+	// Runtime initialization or event bindings go here
 }
 
 void AAttachment::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	// Per-frame logic (not needed for static attachments)
 }
 
-void AAttachment::BuildAttachment()
+void AAttachment::LoadAttachmentInfo()
 {
-	// Check if the DataTable is valid
+	// Validate DataTable reference
 	if (!IsValid(AttachmentDataTable))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AttachmentDataTable is invalid for Attachment %s"), *GetName());
@@ -36,7 +42,7 @@ void AAttachment::BuildAttachment()
 
 	const FString ContextString(TEXT("Finding Row in Attachments Data Table"));
 
-	// Search for the row in the DataTable by ID
+	// Try to fetch row by ID
 	const FAttachmentInfo* FoundRow = AttachmentDataTable->FindRow<FAttachmentInfo>(ID, ContextString);
 	if (!FoundRow)
 	{
@@ -44,20 +50,24 @@ void AAttachment::BuildAttachment()
 		return;
 	}
 
+	// Store DataTable row into local struct
 	AttachmentInfo = *FoundRow;
-	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' build successfully."), *ID.ToString());
+	UE_LOG(LogTemp, Log, TEXT("Attachment '%s' built successfully."), *ID.ToString());
 
+	// Apply mesh from DataTable definition
 	MeshComponent->SetSkeletalMeshAsset(AttachmentInfo.Mesh.LoadSynchronous());
 
-	// Enable query-only overlaps on a common channel (WorldDynamic)
+	// Configure collision to allow overlap detection
 	if (MeshComponent)
 	{
-		MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		MeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
-		MeshComponent->SetGenerateOverlapEvents(true);            // not required for OverlapMulti*, but helpful
+		MeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);       // No physics, only queries
+		MeshComponent->SetCollisionObjectType(ECC_WorldDynamic);                // Mark as dynamic world object
+		MeshComponent->SetGenerateOverlapEvents(true);                          // Enable overlap events
 
-		MeshComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-		MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap); // attachments see each other
+		MeshComponent->SetCollisionResponseToAllChannels(ECR_Ignore);           // Ignore everything by default
+		MeshComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap); // Only overlap with other attachments
 	}
+
+	// Initialize runtime durability with static value from DataTable
+	AttachmentCurrentState.Durability = AttachmentInfo.Durability;
 }
-	

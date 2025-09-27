@@ -4,6 +4,17 @@
 #include "AttachmentSystemTypes.generated.h"
 
 class AAttachment;
+
+
+/** Defines how weapon durability should be calculated. */
+UENUM(BlueprintType)
+enum class EWeaponDurabilityMode : uint8
+{
+	Average UMETA(DisplayName="Average"),   // Média das durabilidades
+	Minimum UMETA(DisplayName="Minimum"),   // A menor durabilidade (peça mais fraca)
+	Maximum UMETA(DisplayName="Maximum")    // A maior durabilidade (peça mais forte)
+};
+
 /**
  * @brief Defines atomic categories for all major firearm components and attachments.
  */
@@ -287,8 +298,10 @@ struct FAttachmentInfo : public FTableRowBase
 	/* =============================
 	 * Display
 	 * ============================= */
-    
-	/** Short internal name / ID of the attachment. */
+
+	/** Short internal name / ID of the attachment. 
+	 *  - Used in tooltips, logs, or debug.
+	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Display")
 	FName Display_Name;
 
@@ -305,7 +318,7 @@ struct FAttachmentInfo : public FTableRowBase
 	 * Classification
 	 * ============================= */
 
-	/** High-level category (optic, barrel, stock, etc.). */
+	/** High-level category (e.g., Optic, Barrel, Stock, etc.). */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Classification")
 	EAttachmentCategory Category;
 
@@ -314,7 +327,7 @@ struct FAttachmentInfo : public FTableRowBase
 	 * Stats
 	 * ============================= */
 
-	/** Modifiers applied to the owning weapon when attached. */
+	/** Stat modifiers applied to the weapon when attached. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Attachment|Stats")
 	TArray<FStatModifier> Modifiers;
 
@@ -323,21 +336,88 @@ struct FAttachmentInfo : public FTableRowBase
 	 * Rail Configuration
 	 * ============================= */
 
-	/** If true → validates against rail rules (UI, spline, bitmask). 
-	 *  If false → attaches via basic socket/collision checks.
+	/** If true → validates against rail rules (UI, spline, bitmask).
+	 *  If false → attaches via simple socket/collision logic.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
 	bool bUseRail = false;
 
-	/** How many rail slots ("bumps") this attachment occupies. */
+	/** Number of rail slots this attachment occupies. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
 	int32 Size = 1;
 
-	/** Slot index when mounted on a rail (0 = leftmost). */
+	/** Starting slot index when mounted on a rail (0 = leftmost). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Rail")
 	int32 StartSlot = 0;
 
-	/** Durabilidade base desse attachment */
+
+	/* =============================
+	 * Durability
+	 * ============================= */
+
+	/** Base durability of this attachment.
+	 *  - Static value defined in DataTable.
+	 *  - Copied to CurrentState at runtime.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Stats")
+	float Durability = 100.f;
+};
+
+USTRUCT(BlueprintType, Category="Attachments")
+struct FAttachmentCurrentState
+{
+	GENERATED_BODY()
+
+	/** Current durability at runtime.
+	 *  - Starts from FAttachmentInfo::Durability.
+	 *  - Decreases with use / damage.
+	 *  - Can be repaired or modified in-game.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
-	float Durability = 100.f; // default
+	float Durability = 100.f;
+};
+
+USTRUCT(BlueprintType, Category="Attachments")
+struct FWeaponInfo : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	/* =============================
+	 * Config (static defaults)
+	 * ============================= */
+
+	/** Default durability calculation mode for this weapon. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon|Stats")
+	EWeaponDurabilityMode DefaultDurabilityMode{EWeaponDurabilityMode::Average};
+
+	/** Attachments linked by default (ex: spawn with optic, stock, etc.). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon|Attachments")
+	TArray<TSubclassOf<AAttachment>> LinkedAttachments;
+};
+
+
+USTRUCT(BlueprintType, Category="Attachments")
+struct FWeaponCurrentState
+{
+	GENERATED_BODY()
+
+	/* =============================
+	 * Runtime values
+	 * ============================= */
+
+	/** Current durability at runtime.
+	 *  - Starts from base or recalculated from attachments.
+	 *  - Decreases with use/damage.
+	 *  - Can be repaired or reset.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon|Stats")
+	float Durability = 100.f;
+
+	/** Live attachment instances currently spawned on the weapon. */
+	UPROPERTY(EditAnywhere, Transient, BlueprintReadWrite, Category="Weapon|Attachments")
+	TArray<AAttachment*> ActiveAttachments;
+
+	/** Live attachment instances currently spawned on the weapon. */
+	UPROPERTY(EditAnywhere, Transient, BlueprintReadWrite, Category="Weapon|Attachments")
+	TArray<USkeletalMeshComponent*> ActiveAttachmentMeshes;
 };

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Misc/AttachmentSystemTypes.h"
 #include "Weapon.generated.h"
 
 class UWeaponBuilderComponent;
@@ -48,13 +49,33 @@ protected:
 
 
 public:
+	/* =============================
+	* Weapon Data
+	* ============================= */
+
+	UFUNCTION()
+	void HandleWeaponBuilt(const TArray<AAttachment*>& SpawnedAttachments);
+	
+	/** Weapon configuration (static info, may come from DataTable). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon|Config")
+	FWeaponInfo WeaponInfo;
+
+	/** Runtime state (durability, active attachments, dynamic values). */
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Weapon|Stats", meta=(AllowPrivateAccess="true"))
+	FWeaponCurrentState WeaponCurrentState;
+
+	/** Calculates weapon durability (uses WeaponInfo.DefaultDurabilityMode if not specified). */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Stats")
+	float GetWeaponDurability(EWeaponDurabilityMode Mode = EWeaponDurabilityMode::Average);
+
+	
+	/* =============================
+	 * Getters
+	 * ============================= */
+
 	/** Getter for the root component (base transform of the weapon). */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	FORCEINLINE USceneComponent* GetRoot() const { return Root; }
-
-	// Calcula a durabilidade média
-	UFUNCTION(BlueprintCallable, Category="Weapon|Stats")
-	float GetWeaponDurability() const;
 
 	/** Getter for the WeaponBuilderComponent (handles attachment assembly). */
 	UFUNCTION(BlueprintCallable, Category="Weapon")

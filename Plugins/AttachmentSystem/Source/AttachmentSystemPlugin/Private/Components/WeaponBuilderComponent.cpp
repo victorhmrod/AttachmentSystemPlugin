@@ -62,7 +62,7 @@ void UWeaponBuilderComponent::BuildWeapon()
         );
         if (!RootInstance) continue;
 
-        RootInstance->BuildAttachment();
+        RootInstance->LoadAttachmentInfo();
 
         if (Weapon && Weapon->GetRoot() && RootInstance->MeshComponent)
         {
@@ -122,7 +122,7 @@ void UWeaponBuilderComponent::BuildWeapon()
                 AAttachment* ChildInstance = Link.ChildInstances[i];
                 if (!ChildInstance) continue;
 
-                ChildInstance->BuildAttachment();
+                ChildInstance->LoadAttachmentInfo();
                 USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
                 // Socket by category
@@ -287,6 +287,9 @@ void UWeaponBuilderComponent::BuildWeapon()
             } // end for i
         } // end for Link
     } // end BFS
+
+	// --- Broadcast to listeners (e.g. Weapon) that build is complete ---
+	OnWeaponBuilt.Broadcast(SpawnedAttachments);
 }
 
 bool UWeaponBuilderComponent::DoesCollideWithRail(
@@ -381,7 +384,7 @@ void UWeaponBuilderComponent::BuildWeaponFromAttachmentGraph(AAttachment* Parent
 
 			if (!ChildInstance) continue;
 
-			ChildInstance->BuildAttachment();
+			ChildInstance->LoadAttachmentInfo();
 			USkeletalMeshComponent* ChildMesh = ChildInstance->MeshComponent;
 
 			// Use category to resolve target socket
