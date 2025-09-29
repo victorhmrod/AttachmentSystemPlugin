@@ -2,30 +2,24 @@
 
 using UnrealBuildTool;
 
-public class AttachmentSystemPlugin : ModuleRules
+public class RingBufferPlugin : ModuleRules
 {
-	public AttachmentSystemPlugin(ReadOnlyTargetRules Target) : base(Target)
+	public RingBufferPlugin(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
-		
-		
+
+
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
-			}
-			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
-			new string[]
-			{
 				"CoreUObject",
 				"Engine",
-				"Slate",
 				"SlateCore",
-				"RingBufferPlugin"
 			}
-			);
+		);
+
+		// No third-party deps; we use <atomic> and <array> from STL.
+		bUseUnity = true;
 	}
 }
