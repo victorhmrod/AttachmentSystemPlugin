@@ -15,7 +15,8 @@ UCLASS()
 class RINGBUFFERPLUGIN_API URingBufferSimpleComponent : public URingBufferBaseComponent
 {
 	GENERATED_BODY()
-
+public:
+	URingBufferSimpleComponent();
 protected:
 	// URingBufferBaseComponent impl
 	virtual bool  BufferPutByte(uint8 Byte) override;

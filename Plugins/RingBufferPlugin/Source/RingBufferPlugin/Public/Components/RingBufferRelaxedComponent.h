@@ -34,5 +34,5 @@ protected:
 
 private:
 	static constexpr size_t N = 1024;
-	RelaxedRingBuffer<N, char, uint32, FastRingMod<N,uint32>> Buffer;
+	RelaxedRingBuffer<N, char, uint32, Lomont::FastRingMod<N,uint32>> Buffer;
 };

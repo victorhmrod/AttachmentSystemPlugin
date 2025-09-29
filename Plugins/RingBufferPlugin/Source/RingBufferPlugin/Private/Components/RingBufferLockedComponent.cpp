@@ -43,6 +43,10 @@ int32 URingBufferLockedComponent::BufferAvailableToWrite() const
 
 void URingBufferLockedComponent::BufferClear()
 {
-	// LockedRingBuffer is copy-assignable, safe to reset via reinitialization.
-	Buffer = LockedRingBuffer<N, char, uint32>();
+	// Not copy-assignable (uses atomics) → drain until empty.
+	char Dummy;
+	while (Buffer.Get(Dummy))
+	{
+		// discard data
+	}
 }
