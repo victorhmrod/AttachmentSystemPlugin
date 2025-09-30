@@ -13,6 +13,7 @@ public class AttachmentSystemPlugin : ModuleRules
 			new string[]
 			{
 				"Core",
+				"RingBufferPlugin"
 			}
 			);
 			
@@ -23,8 +24,7 @@ public class AttachmentSystemPlugin : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"Slate",
-				"SlateCore",
-				"RingBufferPlugin"
+				"SlateCore"
 			}
 			);
 	}

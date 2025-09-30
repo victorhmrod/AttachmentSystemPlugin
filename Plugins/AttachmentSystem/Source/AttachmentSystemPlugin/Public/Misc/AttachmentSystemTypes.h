@@ -5,14 +5,18 @@
 
 class AAttachment;
 
+// Clean UE log category for this class
+DECLARE_LOG_CATEGORY_EXTERN(LogAttachmentSystem, Log, All);
 
-/** Defines how weapon durability should be calculated. */
+/**
+ * @brief Defines how weapon durability should be calculated.
+ */
 UENUM(BlueprintType)
 enum class EWeaponDurabilityMode : uint8
 {
-	Average UMETA(DisplayName="Average"),   // Média das durabilidades
-	Minimum UMETA(DisplayName="Minimum"),   // A menor durabilidade (peça mais fraca)
-	Maximum UMETA(DisplayName="Maximum")    // A maior durabilidade (peça mais forte)
+	Average UMETA(DisplayName="Average"),   // Average durability
+	Minimum UMETA(DisplayName="Minimum"),   // The lowest durability (weakest part)
+	Maximum UMETA(DisplayName="Maximum")    // The greatest durability (strongest part)
 };
 
 /**
@@ -161,7 +165,6 @@ enum class EStatModType : uint8
 /**
  * @brief Defines the different types of weapon stats
  */
- 
 UENUM(BlueprintType)
 enum class EWeaponStat : uint8
 {
@@ -420,4 +423,31 @@ struct FWeaponCurrentState
 	/** Live attachment instances currently spawned on the weapon. */
 	UPROPERTY(EditAnywhere, Transient, BlueprintReadWrite, Category="Weapon|Attachments")
 	TArray<USkeletalMeshComponent*> ActiveAttachmentMeshes;
+};
+
+/**
+ * @brief Defines ammo types.
+ */
+UENUM(BlueprintType)
+enum class EBulletType : uint8 {
+	/** Invalid / no bullet present. */
+	None             UMETA(DisplayName = "None"),
+
+	/** M43/M67 Standard Full Metal Jacket (Ball). Default round with balanced stats. */
+	Standard_FMJ     UMETA(DisplayName = "Standard FMJ (Ball)"), 
+    
+	/** Armor-Piercing (e.g., Russian BP). High penetration, moderate damage. (Black Tip) */
+	ArmorPiercing    UMETA(DisplayName = "Armor Piercing (Black Tip)"),
+    
+	/** Soft Point or Hollow Point (HP/SP). High damage to flesh, low penetration. */
+	HollowPoint_SP   UMETA(DisplayName = "Hollow/Soft Point"),
+    
+	/** Tracer Round (e.g., Russian T45). Leaves a visible trail, lower damage. (Green Tip) */
+	Tracer           UMETA(DisplayName = "Tracer (Green Tip)"),
+    
+	/** Subsonic Round. Used with suppressors. Very low velocity/damage, no sound warning. */
+	Subsonic         UMETA(DisplayName = "Subsonic"),
+    
+	/** High-Powered Jacketed Soft Point (JSP). */
+	Hunting_JSP      UMETA(DisplayName = "Jacketed Soft Point")
 };
