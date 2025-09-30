@@ -27,15 +27,12 @@ void AMagazineAttachment::RunPerformanceTest()
     constexpr int32 TestCount = 1'000'000;
     EBulletType Temp;
 
-    UE_LOG(LogAttachmentSystem, Warning, TEXT("=== Performance Test: %d bullets ==="), TestCount);
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Performance Test: %d bullets"), TestCount);
 
-    // ---------------------------
-    // RingBuffer (our magazine)
-    // ---------------------------
     {
         Lomont::RingBuffer<TestCount, EBulletType, int32> PerfBuffer;
 
-        double Start = FPlatformTime::Seconds();
+        const double Start = FPlatformTime::Seconds();
 
         // Insert
         for (int32 i = 0; i < TestCount; i++)
@@ -49,20 +46,16 @@ void AMagazineAttachment::RunPerformanceTest()
             PerfBuffer.Get(Temp);
         }
 
-        double End = FPlatformTime::Seconds();
-        double DurationMs = (End - Start) * 1000.0;
+        const double End = FPlatformTime::Seconds();
+        const double DurationMs = (End - Start) * 1000.0;
 
-        UE_LOG(LogAttachmentSystem, Warning, TEXT("RingBuffer → %d insertions + removals in %.3f ms"),
-               TestCount, DurationMs);
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("RingBuffer → %d insertions + removals in %.3f ms"), TestCount, DurationMs);
     }
 
-    // ---------------------------
-    // TQueue (Unreal’s queue)
-    // ---------------------------
     {
         TQueue<EBulletType> PerfQueue;
 
-        double Start = FPlatformTime::Seconds();
+        const double Start = FPlatformTime::Seconds();
 
         for (int32 i = 0; i < TestCount; i++)
         {
@@ -74,44 +67,38 @@ void AMagazineAttachment::RunPerformanceTest()
             PerfQueue.Dequeue(Temp);
         }
 
-        double End = FPlatformTime::Seconds();
-        double DurationMs = (End - Start) * 1000.0;
+        const double End = FPlatformTime::Seconds();
+        const double DurationMs = (End - Start) * 1000.0;
 
         UE_LOG(LogAttachmentSystem, Warning, TEXT("TQueue → %d insertions + removals in %.3f ms"),
                TestCount, DurationMs);
     }
 
-    // ---------------------------
-    // TArray (contiguous storage)
-    // ---------------------------
     {
         TArray<EBulletType> PerfArray;
-        PerfArray.Reserve(TestCount); // avoid reallocations
 
-        double Start = FPlatformTime::Seconds();
+        const double Start = FPlatformTime::Seconds();
 
-        // Insert
+        // Insert (push)
         for (int32 i = 0; i < TestCount; i++)
         {
-            PerfArray.Add(EBulletType::Standard_FMJ);
+            PerfArray.Push(EBulletType::Standard_FMJ);
         }
 
-        // Remove (FIFO style: shift left) → O(n²) if using RemoveAt(0)!
-        // Instead, simulate queue by just walking index.
-        int32 ReadIndex = 0;
+        // Remove (pop)
         for (int32 i = 0; i < TestCount; i++)
         {
-            Temp = PerfArray[ReadIndex++];
+            Temp = PerfArray.Pop(EAllowShrinking::Yes);
         }
 
-        double End = FPlatformTime::Seconds();
-        double DurationMs = (End - Start) * 1000.0;
+        const double End = FPlatformTime::Seconds();
+        const double DurationMs = (End - Start) * 1000.0;
 
         UE_LOG(LogAttachmentSystem, Warning, TEXT("TArray → %d insertions + removals in %.3f ms"),
                TestCount, DurationMs);
     }
 
-    UE_LOG(LogAttachmentSystem, Warning, TEXT("=== Performance Test End ==="));
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Performance Test End"));
 }
 
 /* =============================

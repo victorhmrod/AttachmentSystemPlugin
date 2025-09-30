@@ -4,9 +4,9 @@
 	"VersionName": "1.0",
 	"FriendlyName": "Attachment System Plugin",
 	"Description": "",
-	"Category": "Other",
-	"CreatedBy": "",
-	"CreatedByURL": "",
+	"Category": "Framework",
+	"CreatedBy": "Victor H.",
+	"CreatedByURL": "https://github.com/victorhmrod",
 	"DocsURL": "",
 	"MarketplaceURL": "",
 	"SupportURL": "",
@@ -21,10 +21,10 @@
 			"LoadingPhase": "Default"
 		}
 	],
-    "Plugins": [
-        {
-            "Name": "RingBufferPlugin",
-            "Enabled": true
-        }
-    ]
+	"Plugins": [
+		{
+			"Name": "RingBufferPlugin",
+			"Enabled": true
+		}
+	]
 }

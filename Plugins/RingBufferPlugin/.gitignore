@@ -75,3 +75,11 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+Frontline.sln.DotSettings.user
+/Frontline/Intermediate
+.vsconfig
+.vscode
+Frontline.code-workspace
+/SteamBuilds
+/Plugins/SteamIntegrationKit/Source/SteamSdk/tools/ContentBuilder
+/Plugins/EOSIntegrationKit

@@ -40,7 +40,7 @@ protected:
     virtual void BeginPlay() override;
 
     UFUNCTION(BlueprintCallable, CallInEditor, Category="Magazine|Debug")
-    void RunPerformanceTest();
+    static void RunPerformanceTest();
 
 private:
     /** Capacity of the magazine (compile-time constant). */
