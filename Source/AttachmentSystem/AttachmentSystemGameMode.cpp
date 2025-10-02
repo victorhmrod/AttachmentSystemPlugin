@@ -2,7 +2,6 @@
 
 #include "AttachmentSystemGameMode.h"
 
-AAttachmentSystemGameMode::AAttachmentSystemGameMode()
-{
-	// stub
+AAttachmentSystemGameMode::AAttachmentSystemGameMode() {
+  // stub
 }

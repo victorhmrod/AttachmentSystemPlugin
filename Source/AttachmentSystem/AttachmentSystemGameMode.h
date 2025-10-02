@@ -2,21 +2,17 @@
 
 #pragma once
 
+#include "AttachmentSystemGameMode.generated.h"
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "AttachmentSystemGameMode.generated.h"
 
 /**
  *  Simple GameMode for a first person game
  */
 UCLASS(abstract)
-class AAttachmentSystemGameMode : public AGameModeBase
-{
-	GENERATED_BODY()
+class AAttachmentSystemGameMode : public AGameModeBase {
+  GENERATED_BODY()
 
 public:
-	AAttachmentSystemGameMode();
+  AAttachmentSystemGameMode();
 };
-
-
-

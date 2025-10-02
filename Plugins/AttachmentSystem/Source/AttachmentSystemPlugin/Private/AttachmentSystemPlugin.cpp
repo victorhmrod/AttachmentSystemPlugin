@@ -4,14 +4,10 @@
 
 #define LOCTEXT_NAMESPACE "FAttachmentSystemModule"
 
-void FAttachmentSystemPluginModule::StartupModule()
-{
-}
+void FAttachmentSystemPluginModule::StartupModule() {}
 
-void FAttachmentSystemPluginModule::ShutdownModule()
-{
-}
+void FAttachmentSystemPluginModule::ShutdownModule() {}
 
 #undef LOCTEXT_NAMESPACE
-	
+
 IMPLEMENT_MODULE(FAttachmentSystemPluginModule, AttachmentSystem)
