@@ -1,262 +1,361 @@
 #include "Actors/Weapon.h"
-
 #include "Actors/Attachment.h"
 #include "Actors/MagazineAttachment.h"
+#include "Actors/BarrelAttachment.h"
 #include "Components/WeaponBuilderComponent.h"
 #include "Misc/AttachmentSystemTypes.h"
-
-/* =============================
- * Lifecycle
- * ============================= */
+#include "Net/UnrealNetwork.h"
 
 AWeapon::AWeapon()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	
-	// Root scene component to serve as the base transform
-	Root = CreateDefaultSubobject<USceneComponent>(FName(TEXTVIEW("Root")));
-	SetRootComponent(Root);
+    PrimaryActorTick.bCanEverTick = true;
 
-	// Component that manages attachments (spawn/assembly)
-	WeaponBuilderComponent = CreateDefaultSubobject<UWeaponBuilderComponent>(FName(TEXTVIEW("WeaponBuilderComponent")));
+    Root = CreateDefaultSubobject<USceneComponent>(FName(TEXT("Root")));
+    SetRootComponent(Root);
 
-	// Enable network replication
-	bReplicates = true;
+    WeaponBuilderComponent = CreateDefaultSubobject<UWeaponBuilderComponent>(FName(TEXT("WeaponBuilderComponent")));
+    bReplicates = true;
 
-	// Subscribe to weapon builder events
-	WeaponBuilderComponent->OnWeaponBuilt.AddDynamic(this, &AWeapon::HandleWeaponBuilt);
+    WeaponBuilderComponent->OnWeaponBuilt.AddDynamic(this, &AWeapon::HandleWeaponBuilt);
 }
 
 void AWeapon::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
+    WeaponCurrentState.Durability = 100.f;
+}
 
-	// Initialize runtime durability
-	WeaponCurrentState.Durability = 100.f;
+void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	for (int i = 0; i < 5; i++)
-	{
-		(void)FireWeapon();
-	}
+    DOREPLIFETIME(AWeapon, CurrentReloadStage);
+    DOREPLIFETIME(AWeapon, bHasMagazineAttached);
 }
 
 void AWeapon::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
-	// Optional: update durability in real-time if attachments degrade dynamically
+    Super::Tick(DeltaTime);
 }
-
-
-/* =============================
- * Weapon Builder
- * ============================= */
 
 void AWeapon::HandleWeaponBuilt(const TArray<AAttachment*>& SpawnedAttachments)
 {
-	// Reset runtime arrays to avoid duplicates from rebuilds
-	WeaponCurrentState.ActiveAttachments.Reset();
-	WeaponCurrentState.ActiveAttachmentMeshes.Reset();
+    WeaponCurrentState.ActiveAttachments.Reset();
+    WeaponCurrentState.ActiveAttachmentMeshes.Reset();
+    CurrentMagazine = nullptr;
+    CurrentBarrel = nullptr;
 
-	// Save references into runtime state
-	for (AAttachment* Attachment : SpawnedAttachments)
-	{
-		if (!Attachment) continue;
+    for (AAttachment* Attachment : SpawnedAttachments)
+    {
+        if (!Attachment) continue;
+        WeaponCurrentState.ActiveAttachments.Add(Attachment);
 
-		WeaponCurrentState.ActiveAttachments.Add(Attachment);
+        if (USkeletalMeshComponent* Mesh = Attachment->GetMeshComponent())
+        {
+            WeaponCurrentState.ActiveAttachmentMeshes.Add(Mesh);
+        }
 
-		if (USkeletalMeshComponent* Mesh = Attachment->GetMeshComponent())
-		{
-			WeaponCurrentState.ActiveAttachmentMeshes.Add(Mesh);
-		}
+        if (AMagazineAttachment* Mag = Cast<AMagazineAttachment>(Attachment))
+            CurrentMagazine = Mag;
 
-		// Detect if attachment is a magazine
-		if (AMagazineAttachment* Mag = Cast<AMagazineAttachment>(Attachment))
-		{
-			CurrentMagazine = Mag;
-			UE_LOG(LogAttachmentSystem, Log, TEXT("Weapon %s found magazine: %s"),
-				   *GetName(), *GetNameSafe(Mag));
-		}
-	}
-
-	UE_LOG(LogAttachmentSystem, Log, TEXT("Weapon %s registered %d active attachments (%d meshes)."),
-		*GetName(),
-		WeaponCurrentState.ActiveAttachments.Num(),
-		WeaponCurrentState.ActiveAttachmentMeshes.Num());
+        if (ABarrelAttachment* Barrel = Cast<ABarrelAttachment>(Attachment))
+            CurrentBarrel = Barrel;
+    }
 }
-
 
 /* =============================
  * Weapon Stats
  * ============================= */
-
 float AWeapon::GetWeaponDurability(EWeaponDurabilityMode Mode)
 {
-	// If not explicitly provided, use the weapon's default config
-	if (Mode == EWeaponDurabilityMode::Average && WeaponInfo.DefaultDurabilityMode != EWeaponDurabilityMode::Average)
-	{
-		Mode = WeaponInfo.DefaultDurabilityMode;
-	}
+    if (Mode == EWeaponDurabilityMode::Average &&
+        WeaponInfo.DefaultDurabilityMode != EWeaponDurabilityMode::Average)
+    {
+        Mode = WeaponInfo.DefaultDurabilityMode;
+    }
 
-	// No builder component → durability cannot be calculated
-	if (!IsValid(WeaponBuilderComponent)) return 0.f;
+    if (!IsValid(WeaponBuilderComponent)) return 0.f;
+    const TArray<AAttachment*>& SpawnedAttachments = WeaponBuilderComponent->GetSpawnedAttachments();
+    if (SpawnedAttachments.Num() == 0) return 0.f;
 
-	// Get all currently spawned attachments
-	const TArray<AAttachment*>& SpawnedAttachments = WeaponBuilderComponent->GetSpawnedAttachments();
-	if (SpawnedAttachments.Num() == 0) return 0.f;
+    float Total = 0.f;
+    float MinDurability = FLT_MAX;
+    float MaxDurability = -FLT_MAX;
+    int32 ValidCount = 0;
 
-	// Local variables for calculation
-	float Total = 0.f;
-	float MinDurability = FLT_MAX;
-	float MaxDurability = -FLT_MAX;
-	int32 ValidCount = 0;
+    for (const AAttachment* Attachment : SpawnedAttachments)
+    {
+        if (!Attachment) continue;
+        const float CurrentDurability = Attachment->GetDurability();
+        Total += CurrentDurability;
+        MinDurability = FMath::Min(MinDurability, CurrentDurability);
+        MaxDurability = FMath::Max(MaxDurability, CurrentDurability);
+        ++ValidCount;
+    }
 
-	// Traverse all attachments and gather durability data
-	for (const AAttachment* Attachment : SpawnedAttachments)
-	{
-		if (!Attachment) continue;
+    if (ValidCount == 0) return 0.f;
 
-		const float CurrentDurability = Attachment->GetDurability();
+    switch (Mode)
+    {
+    case EWeaponDurabilityMode::Average:
+        WeaponCurrentState.Durability = Total / ValidCount; break;
+    case EWeaponDurabilityMode::Minimum:
+        WeaponCurrentState.Durability = MinDurability; break;
+    case EWeaponDurabilityMode::Maximum:
+        WeaponCurrentState.Durability = MaxDurability; break;
+    }
 
-		Total += CurrentDurability;
-		MinDurability = FMath::Min(MinDurability, CurrentDurability);
-		MaxDurability = FMath::Max(MaxDurability, CurrentDurability);
-
-		++ValidCount;
-	}
-
-	// Safety check: no valid attachments
-	if (ValidCount == 0) return 0.f;
-
-	// Select calculation mode
-	switch (Mode)
-	{
-	case EWeaponDurabilityMode::Average:
-		WeaponCurrentState.Durability = Total / ValidCount;
-		break;
-	case EWeaponDurabilityMode::Minimum:
-		WeaponCurrentState.Durability = MinDurability;
-		break;
-	case EWeaponDurabilityMode::Maximum:
-		WeaponCurrentState.Durability = MaxDurability;
-		break;
-	}
-
-	// Return the final durability value
-	return WeaponCurrentState.Durability;
+    return WeaponCurrentState.Durability;
 }
-
-EBulletType AWeapon::FireWeapon()
-{
-	// Ensure magazine exists
-	if (!CurrentMagazine)
-	{
-		UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s has NO magazine! Cannot fire."), *GetName());
-		return EBulletType::None;
-	}
-
-	// Ensure ammo available
-	if (!HasAmmo())
-	{
-		UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s magazine is EMPTY! Cannot fire."), *GetName());
-		return EBulletType::None;
-	}
-
-	// Consume one bullet
-	const EBulletType FiredBullet = ConsumeBullet();
-
-	// andle successful fire
-	if (IsValidBullet(FiredBullet))
-	{
-		UE_LOG(LogAttachmentSystem, Log, TEXT("Weapon %s successfully FIRED! Bullet: %s | Remaining: %d"),
-			   *GetName(),
-			   *AMagazineAttachment::BulletTypeToString(FiredBullet),
-			   GetAmmoCount());
-
-		// Decrease durability slightly per shot
-		ModifyDurability(-0.5f);
-
-		// Broadcast delegate for external systems (UI, FX, recoil, etc.)
-		OnWeaponFired.Broadcast();
-
-		return FiredBullet;
-	}
-
-	// Fallback (invalid bullet consumed)
-	UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s failed to fire (invalid bullet)."), *GetName());
-	return EBulletType::None;
-}
-
-	/* =============================
-	* Weapon Stats
-	* ============================= */
 
 void AWeapon::ModifyDurability(float Delta)
 {
-	// Clamp durability in [0..100] range
-	WeaponCurrentState.Durability = FMath::Clamp(
-		WeaponCurrentState.Durability + Delta,
-		0.f,
-		100.f
-	);
+    WeaponCurrentState.Durability = FMath::Clamp(
+        WeaponCurrentState.Durability + Delta, 0.f, 100.f
+    );
+}
 
-	UE_LOG(LogAttachmentSystem, Log, TEXT("Weapon %s durability changed by %.2f → Current: %.2f"),
-		   *GetName(), Delta, WeaponCurrentState.Durability);
+void AWeapon::RunWeaponTest()
+{
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("==== WEAPON TEST START: %s ===="), *GetName());
+
+    // Reset state
+    if (CurrentMagazine)
+    {
+        CurrentMagazine->Empty();
+    }
+    if (CurrentBarrel)
+    {
+        CurrentBarrel->ClearChamber();
+    }
+    bHasMagazineAttached = false;
+    CurrentReloadStage = EReloadStage::RemoveMagazine;
+
+    // 1. Criar um mag dummy e encher
+    AMagazineAttachment* DummyMag = GetWorld()->SpawnActor<AMagazineAttachment>();
+    if (!DummyMag)
+    {
+        UE_LOG(LogAttachmentSystem, Error, TEXT("%s → Could not spawn DummyMag!"), *GetName());
+        return;
+    }
+
+    for (int i = 0; i < 35; i++) // tenta passar da capacidade
+    {
+        DummyMag->AddBullet(EBulletType::Standard_FMJ);
+    }
+
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Initial MagCount=%d | Chamber=%s"),
+           DummyMag->GetAmmoCount(),
+           HasRoundChambered() ? *UEnum::GetValueAsString(GetChamberedRound()) : TEXT("EMPTY"));
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Initial Reload Stage = %d"), (uint8)CurrentReloadStage);
+
+    // 2. Staged reload
+    ProcessReloadStage(EReloadStage::RemoveMagazine);
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("After RemoveMag → Stage=%d | MagAttached=%s"),
+           (uint8)CurrentReloadStage, bHasMagazineAttached ? TEXT("true") : TEXT("false"));
+
+    ProcessReloadStage(EReloadStage::InsertMagazine, DummyMag);
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("After InsertMag → Stage=%d | MagAttached=%s | MagCount=%d"),
+           (uint8)CurrentReloadStage,
+           bHasMagazineAttached ? TEXT("true") : TEXT("false"),
+           CurrentMagazine ? CurrentMagazine->GetAmmoCount() : -1);
+
+    ProcessReloadStage(EReloadStage::RackHandle);
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("After RackHandle → Stage=%d | Chamber=%s"),
+           (uint8)CurrentReloadStage,
+           HasRoundChambered() ? *UEnum::GetValueAsString(GetChamberedRound()) : TEXT("EMPTY"));
+
+    // 3. Disparos de teste (limite 5)
+    for (int i = 1; i <= 5; i++)
+    {
+        EBulletType Shot = FireWeapon();
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("Shot %d → %s"), i, *UEnum::GetValueAsString(Shot));
+    }
+
+    // 4. Reload direto
+    ReloadWeapon(DummyMag);
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("After ReloadWeapon → Chamber=%s | MagCount=%d"),
+           HasRoundChambered() ? *UEnum::GetValueAsString(GetChamberedRound()) : TEXT("EMPTY"),
+           CurrentMagazine ? CurrentMagazine->GetAmmoCount() : -1);
+
+    // 5. Cancel reload test
+    BeginStagedReload();
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Before Cancel → Stage=%d"), (uint8)CurrentReloadStage);
+    CancelReload();
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("After Cancel → Stage=%d | Chamber=%s | MagCount=%d"),
+           (uint8)CurrentReloadStage,
+           HasRoundChambered() ? *UEnum::GetValueAsString(GetChamberedRound()) : TEXT("EMPTY"),
+           CurrentMagazine ? CurrentMagazine->GetAmmoCount() : -1);
+
+    // 6. Loop de disparos até esvaziar o mag
+    int32 ExtraShot = 1;
+    while (HasRoundChambered() || (CurrentMagazine && !CurrentMagazine->IsEmpty()))
+    {
+        EBulletType Shot = FireWeapon();
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("Extra Shot %d → %s"),
+               ExtraShot++, *UEnum::GetValueAsString(Shot));
+    }
+
+    // 7. Teste de dry fire
+    EBulletType Dry = FireWeapon();
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Dry Fire → %s"), *UEnum::GetValueAsString(Dry));
+
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("Final Chamber=%s | MagCount=%d"),
+           HasRoundChambered() ? *UEnum::GetValueAsString(GetChamberedRound()) : TEXT("EMPTY"),
+           CurrentMagazine ? CurrentMagazine->GetAmmoCount() : -1);
+
+    UE_LOG(LogAttachmentSystem, Warning, TEXT("==== WEAPON TEST END: %s ===="), *GetName());
 }
 
 /* =============================
- * Ammo / Magazine
+ * Fire Logic
  * ============================= */
-
-int32 AWeapon::GetAmmoCount() const
+EBulletType AWeapon::FireWeapon()
 {
-	return (CurrentMagazine ? CurrentMagazine->GetAmmoCount() : 0);
+    if (!CurrentBarrel) return EBulletType::None;
+
+    if (CurrentBarrel->HasRoundChambered())
+        return FireFromChamber();
+
+    if (TryChamberFromMagazine())
+        return FireFromChamber();
+
+    return EBulletType::None;
 }
 
-bool AWeapon::HasAmmo() const
+EBulletType AWeapon::FireFromChamber()
 {
-	return GetAmmoCount() > 0;
+    if (!CurrentBarrel || !CurrentBarrel->HasRoundChambered())
+        return EBulletType::None;
+
+    EBulletType Fired = CurrentBarrel->GetChamberedRound().value();
+    CurrentBarrel->ClearChamber();
+    TryChamberFromMagazine();
+    ModifyDurability(-0.5f);
+    OnWeaponFired.Broadcast();
+    return Fired;
 }
 
-EBulletType AWeapon::ConsumeBullet() const
+bool AWeapon::TryChamberFromMagazine()
 {
-	if (CurrentMagazine)
-	{
-		EBulletType Type = CurrentMagazine->RemoveBullet();
-		if (Type == EBulletType::None)
-		{
-			UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s tried to fire but magazine is EMPTY!"), *GetName());
-		}
-		else
-		{
-			UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s fired bullet: %s"),
-				   *GetName(),
-				   *AMagazineAttachment::BulletTypeToString(Type));
-		}
-		return Type;
-	}
+    if (!CurrentBarrel || !CurrentMagazine) return false;
+    if (CurrentBarrel->HasRoundChambered()) return true;
 
-	UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s has NO magazine!"), *GetName());
-	return EBulletType::None;
+    EBulletType NextRound = CurrentMagazine->RemoveBullet();
+    if (NextRound != EBulletType::None)
+    {
+        CurrentBarrel->SetChamberedRound(NextRound);
+        return true;
+    }
+    return false;
+}
+
+/* =============================
+ * Reload
+ * ============================= */
+void AWeapon::ReloadWeapon(AMagazineAttachment* NewMag)
+{
+    ReloadMagazine(NewMag);
+
+    if (!CurrentBarrel) return;
+
+    if (!CurrentBarrel->HasRoundChambered())
+        TryChamberFromMagazine();
 }
 
 void AWeapon::ReloadMagazine(AMagazineAttachment* NewMag)
 {
-	CurrentMagazine = NewMag;
-
-	if (NewMag)
-	{
-		UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s reloaded with magazine: %s (%d bullets)"),
-			   *GetName(),
-			   *GetNameSafe(NewMag),
-			   NewMag->GetAmmoCount());
-	}
-	else
-	{
-		UE_LOG(LogAttachmentSystem, Warning, TEXT("Weapon %s magazine removed!"), *GetName());
-	}
+    CurrentMagazine = NewMag;
+    bHasMagazineAttached = (NewMag != nullptr);
 }
 
-bool AWeapon::IsValidBullet(EBulletType BulletType)
+void AWeapon::BeginStagedReload()
 {
-	return BulletType != EBulletType::None;
+    bHasMagazineAttached = (CurrentMagazine != nullptr);
+
+    if (HasRoundChambered() && !bHasMagazineAttached)
+        CurrentReloadStage = EReloadStage::InsertMagazine;
+    else if (HasRoundChambered() && bHasMagazineAttached)
+        CurrentReloadStage = EReloadStage::RemoveMagazine;
+    else if (!HasRoundChambered() && !bHasMagazineAttached)
+        CurrentReloadStage = EReloadStage::InsertMagazine;
+    else if (!HasRoundChambered() && bHasMagazineAttached)
+        CurrentReloadStage = EReloadStage::RemoveMagazine;
+}
+
+void AWeapon::ProcessReloadStage(EReloadStage Stage, AMagazineAttachment* NewMag)
+{
+    if (!CurrentBarrel && Stage == EReloadStage::RackHandle)
+        return;
+
+    switch (Stage)
+    {
+    case EReloadStage::RemoveMagazine:
+        bHasMagazineAttached = false;
+        CurrentMagazine = nullptr;
+        CurrentReloadStage = EReloadStage::InsertMagazine;
+        UE_LOG(LogAttachmentSystem, Log, TEXT("%s → Stage: Remove Magazine"), *GetName());
+        break;
+
+    case EReloadStage::InsertMagazine:
+        if (NewMag)
+        {
+            ReloadMagazine(NewMag);
+            bHasMagazineAttached = true;
+            UE_LOG(LogAttachmentSystem, Log, TEXT("%s → Stage: Insert Magazine (%d rounds)"),
+                   *GetName(), NewMag->GetAmmoCount());
+        }
+        else
+        {
+            UE_LOG(LogAttachmentSystem, Warning, TEXT("%s tried to insert magazine but none provided"), *GetName());
+        }
+
+        CurrentReloadStage = HasRoundChambered() ? EReloadStage::None : EReloadStage::RackHandle;
+        break;
+
+    case EReloadStage::RackHandle:
+        if (TryChamberFromMagazine())
+        {
+            UE_LOG(LogAttachmentSystem, Log, TEXT("%s → Stage: Rack Handle (chambered round: %s)"),
+                   *GetName(),
+                   *UEnum::GetValueAsString(GetChamberedRound()));
+        }
+        else
+        {
+            UE_LOG(LogAttachmentSystem, Warning, TEXT("%s → Rack Handle FAILED (mag empty)"), *GetName());
+        }
+        CurrentReloadStage = EReloadStage::None;
+        break;
+
+    default:
+        CurrentReloadStage = EReloadStage::None;
+        break;
+    }
+}
+
+
+
+void AWeapon::CancelReload()
+{
+    CurrentReloadStage = EReloadStage::None;
+}
+
+/* =============================
+ * Helpers
+ * ============================= */
+int32 AWeapon::GetAmmoCount() const
+{
+    return (CurrentMagazine ? CurrentMagazine->GetAmmoCount() : 0);
+}
+
+EBulletType AWeapon::GetChamberedRound() const
+{
+    return (CurrentBarrel && CurrentBarrel->HasRoundChambered())
+        ? CurrentBarrel->GetChamberedRound().value()
+        : EBulletType::None;
+}
+
+bool AWeapon::HasRoundChambered() const
+{
+    return (CurrentBarrel && CurrentBarrel->HasRoundChambered());
 }

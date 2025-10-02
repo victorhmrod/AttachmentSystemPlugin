@@ -47,7 +47,7 @@ public:
 	 * ============================= */
 
 	/** Mesh component representing this attachment visually. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Attachment")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<USkeletalMeshComponent> MeshComponent;
 
 
@@ -56,15 +56,15 @@ public:
 	 * ============================= */
 
 	/** Links to child attachments in the hierarchy. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment|Inventory")
 	TArray<FAttachmentLink> ChildrenLinks;
 
 	/** Starting index in graph traversal (e.g., rail offset). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Inventory")
 	int32 StartPosition = 0;
 
 	/** Number of slots this attachment occupies on a rail. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachmen|Inventoryt")
 	int32 Size = 1;
 
 
@@ -73,7 +73,7 @@ public:
 	 * ============================= */
 
 	/** Unique ID used for DataTable lookup and inventory reference. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment", meta=(AllowPrivateAccess="true", ExposeOnSpawn="true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment|Inventory", meta=(AllowPrivateAccess="true", ExposeOnSpawn="true"))
 	FName ID;
 
 	/** Static definition loaded from DataTable (mesh, stats, description). */

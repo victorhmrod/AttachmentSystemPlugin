@@ -451,3 +451,46 @@ enum class EBulletType : uint8 {
 	/** High-Powered Jacketed Soft Point (JSP). */
 	Hunting_JSP      UMETA(DisplayName = "Jacketed Soft Point")
 };
+
+/**
+ * Defines magazine types and their specific capacities.
+ */
+UENUM(BlueprintType)
+enum class EMagazineType : uint8 {
+    // ---- 7.62x39mm ----
+    // --- Polymer and Steel-Reinforced Magazines (30-Round Variants) ---
+    // Magpul polymer magazines
+    Magpul_MOE_30               UMETA(DisplayName = "Magpul PMAG MOE (30)"),
+    Magpul_M3_30_Reinforced     UMETA(DisplayName = "Magpul PMAG M3 (30, Steel-Reinforced)"),
+    // Arsenal and XTech polymer magazines
+    Arsenal_Waffle_30           UMETA(DisplayName = "Arsenal Circle 10 (30, Waffle)"),
+    XTech_MAG47_30              UMETA(DisplayName = "XTech MAG47 (30)"),
+    USPalm_AK30R_30             UMETA(DisplayName = "US Palm AK30R (30)"),
+    // ProMag standard polymer magazine
+    ProMag_Standard_30          UMETA(DisplayName = "ProMag (30)"),
+
+    // --- Reduced Capacity Magazines ---
+    // Reduced capacity Magpul MOE
+    Magpul_MOE_10               UMETA(DisplayName = "Magpul PMAG MOE (10)"),
+    Magpul_MOE_20               UMETA(DisplayName = "Magpul PMAG MOE (20)"),
+    // Reduced capacity ProMag
+    ProMag_Standard_20          UMETA(DisplayName = "ProMag (20)"),
+
+    // --- High Capacity Box Magazines (Standard Box & Quad-Stack) ---
+    // 40-round box magazines
+    Arsenal_Waffle_40           UMETA(DisplayName = "Arsenal Circle 10 (40, Waffle)"),
+    ProMag_Standard_40          UMETA(DisplayName = "ProMag (40)"),
+    // 60-round quad-stack
+    ATI_Schmeisser_S60          UMETA(DisplayName = "ATI Schmeisser S60 (60)"),
+
+    // --- Drum Magazines ---
+    // Drum magazines of various capacities
+    ProMag_Drum_50              UMETA(DisplayName = "ProMag Drum (50)"),
+    KCI_Drum_75                 UMETA(DisplayName = "KCI Drum (75)"),
+    Chinese_Drum_75             UMETA(DisplayName = "Chinese-Pattern Drum (75)"),
+
+    // --- Steel Surplus Magazines ---
+    // Classic steel box magazine variants
+    Surplus_Steel_30            UMETA(DisplayName = "Steel Surplus (30)"),
+    Surplus_Steel_40_RPK        UMETA(DisplayName = "Steel Surplus (40, RPK-Style)")
+};

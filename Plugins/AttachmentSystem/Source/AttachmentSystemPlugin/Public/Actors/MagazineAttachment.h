@@ -36,6 +36,10 @@ public:
     /** Utility: convert bullet type to string for logs. */
     static FString BulletTypeToString(EBulletType Type);
 
+    /** Empties the magazine completely. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    void Empty();
+
 protected:
     virtual void BeginPlay() override;
 

@@ -14,12 +14,6 @@ AMagazineAttachment::AMagazineAttachment()
 void AMagazineAttachment::BeginPlay()
 {
     Super::BeginPlay();
-
-    // Preload bullets for debug (default full mag)
-    for (int i = 0; i < MagazineCapacity; i++)
-    {
-        AddBullet(EBulletType::Standard_FMJ);
-    }
 }
 
 void AMagazineAttachment::RunPerformanceTest()
@@ -107,18 +101,21 @@ void AMagazineAttachment::RunPerformanceTest()
 
 bool AMagazineAttachment::AddBullet(EBulletType BulletType)
 {
+    if (GetAmmoCount() >= MagazineCapacity)
+    {
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s FULL! Capacity=%d"),
+               *GetName(), MagazineCapacity);
+        return false;
+    }
     if (BulletBuffer.Put(BulletType))
     {
         UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s added bullet: %s (AmmoCount=%d)"),
-               *GetName(),
-               *BulletTypeToString(BulletType),
-               GetAmmoCount());
+               *GetName(), *BulletTypeToString(BulletType), GetAmmoCount());
         return true;
     }
-
-    UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s is FULL! Could not add bullet."), *GetName());
     return false;
 }
+
 
 EBulletType AMagazineAttachment::RemoveBullet()
 {
@@ -163,6 +160,23 @@ FString AMagazineAttachment::BulletTypeToString(EBulletType Type)
     case EBulletType::Subsonic:       return TEXT("Subsonic");
     case EBulletType::Hunting_JSP:    return TEXT("Jacketed Soft Point");
     default:                          return TEXT("Unknown");
+    }
+}
+
+void AMagazineAttachment::Empty()
+{
+    EBulletType Temp{};
+    int32 Count = 0;
+    while (BulletBuffer.Get(Temp)) { Count++; }
+
+    if (Count > 0)
+    {
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s fully emptied (%d rounds removed)."),
+               *GetName(), Count);
+    }
+    else
+    {
+        UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s already EMPTY."), *GetName());
     }
 }
 
