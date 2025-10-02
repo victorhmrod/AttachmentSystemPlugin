@@ -13,13 +13,21 @@ class ATTACHMENTSYSTEMPLUGIN_API AMagazineAttachment : public AAttachment
 public:
     AMagazineAttachment();
 
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> &OutLifetimeProps) const override;
+
     /** Add a bullet of the given type to the magazine (returns true if added). */
     UFUNCTION(BlueprintCallable, Category="Magazine")
     bool AddBullet(EBulletType BulletType);
 
+    UFUNCTION(Server, Reliable)
+    void Server_AddBullet(EBulletType BulletType);
+    
     /** Removes one bullet from the magazine and returns its type. */
     UFUNCTION(BlueprintCallable, Category="Magazine")
     EBulletType RemoveBullet();
+
+    UFUNCTION(Server, Reliable)
+    void Server_RemoveBullet();
 
     /** Gets the current number of bullets in the magazine. */
     UFUNCTION(BlueprintCallable, Category="Magazine")
@@ -35,10 +43,19 @@ public:
 
     /** Utility: convert bullet type to string for logs. */
     static FString BulletTypeToString(EBulletType Type);
-
+    
     /** Empties the magazine completely. */
     UFUNCTION(BlueprintCallable, Category="Magazine")
-    void Empty();
+    void RemoveBullets(int32 n);
+
+    UFUNCTION(Server, Reliable)
+    void Server_RemoveBullets(int32 n);
+
+    UPROPERTY(ReplicatedUsing=OnRep_AmmoCount)
+    int32 ReplicatedAmmoCount = 0;
+
+    UFUNCTION()
+    void OnRep_AmmoCount();
 
 protected:
     virtual void BeginPlay() override;

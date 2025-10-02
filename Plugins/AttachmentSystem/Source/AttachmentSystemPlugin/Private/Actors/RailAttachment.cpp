@@ -53,16 +53,21 @@ int32 ARailAttachment::GetSlotFromDistance(float Distance) const
 
 bool ARailAttachment::PlaceAttachment(AAttachment* Attachment)
 {
+    if (!HasAuthority())
+    {
+        Server_PlaceAttachment(Attachment);
+        return false;
+    }
+
     if (!CanPlaceAttachment(Attachment)) return false;
 
     const int32 Start    = Attachment->StartPosition;
-    const int32 ItemSize = Attachment->Size; // renamed local
+    const int32 ItemSize = Attachment->Size;
 
     const uint64 Mask = MakeMask(Start, ItemSize);
     OccupancyMask |= Mask;
     MountedAttachments.Add(Attachment);
 
-    // Snap the attachment to the spline slot
     if (RailSpline && Attachment->GetMeshComponent())
     {
         const FTransform SlotTransform = GetSlotTransform(Start);
@@ -73,17 +78,35 @@ bool ARailAttachment::PlaceAttachment(AAttachment* Attachment)
     return true;
 }
 
+void ARailAttachment::Server_PlaceAttachment_Implementation(AAttachment* Attachment)
+{
+    if (!HasAuthority()) return;
+    PlaceAttachment(Attachment);
+}
+
 void ARailAttachment::RemoveAttachment(AAttachment* Attachment)
 {
+    if (!HasAuthority())
+    {
+        Server_RemoveAttachment(Attachment);
+        return;
+    }
+
     if (!Attachment || !MountedAttachments.Contains(Attachment)) return;
 
     const int32 Start    = Attachment->StartPosition;
-    const int32 ItemSize = Attachment->Size; // renamed local
+    const int32 ItemSize = Attachment->Size;
 
     const uint64 Mask = MakeMask(Start, ItemSize);
     OccupancyMask &= ~Mask;
 
     MountedAttachments.Remove(Attachment);
+}
+
+void ARailAttachment::Server_RemoveAttachment_Implementation(AAttachment* Attachment)
+{
+    if (!HasAuthority()) return;
+    RemoveAttachment(Attachment);
 }
 
 FTransform ARailAttachment::GetSlotTransform(const int32 SlotIndex) const

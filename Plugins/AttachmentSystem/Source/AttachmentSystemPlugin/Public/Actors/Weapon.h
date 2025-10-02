@@ -19,7 +19,7 @@ enum class EReloadStage : uint8
     RackHandle      UMETA(DisplayName="Rack Charging Handle")
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnWeaponFire);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponFire, const TArray<EBulletType>&, FiredRounds);
 
 UCLASS()
 class ATTACHMENTSYSTEMPLUGIN_API AWeapon : public AActor
@@ -82,23 +82,24 @@ public:
      * Fire
      * ============================= */
     UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
-    EBulletType FireWeapon();
+    TArray<EBulletType> FireWeapon();
+
 
     UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
-    EBulletType FireFromChamber();
+    TArray<EBulletType> FireFromChamber();
 
     UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
     bool TryChamberFromMagazine();
-
+    
     /* =============================
      * Reload
      * ============================= */
+    
     UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
     void ReloadWeapon(AMagazineAttachment* NewMag);
-
+    
     UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
     void ReloadMagazine(AMagazineAttachment* NewMag);
-
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Reload")
     EReloadStage CurrentReloadStage = EReloadStage::None;
 

@@ -85,12 +85,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	bool PlaceAttachment(AAttachment* Attachment);
 
+	UFUNCTION(Server, Reliable)
+	void Server_PlaceAttachment(AAttachment* Attachment);
+
 	/** 
 	 * Removes a previously mounted attachment from this rail.
 	 * Updates occupancy mask and detaches from spline.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Rail")
 	void RemoveAttachment(AAttachment* Attachment);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RemoveAttachment(AAttachment* Attachment);
 
 	/** 
 	 * Gets the world transform of a given slot index along the spline.

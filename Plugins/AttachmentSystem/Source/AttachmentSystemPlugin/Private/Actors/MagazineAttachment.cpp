@@ -1,6 +1,7 @@
 ﻿#include "Actors/MagazineAttachment.h"
 #include "Engine/Engine.h" // GEngine
 #include "Misc/AttachmentSystemTypes.h" // for LogAttachmentSystem + enums
+#include "Net/UnrealNetwork.h"
 
 /* =============================
  * Lifecycle
@@ -9,6 +10,12 @@
 AMagazineAttachment::AMagazineAttachment()
 {
     PrimaryActorTick.bCanEverTick = false;
+}
+void AMagazineAttachment::GetLifetimeReplicatedProps(
+    TArray<class FLifetimeProperty> &OutLifetimeProps) const {
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ThisClass, ReplicatedAmmoCount);
 }
 
 void AMagazineAttachment::BeginPlay()
@@ -99,38 +106,61 @@ void AMagazineAttachment::RunPerformanceTest()
  * Public API (Gameplay usage)
  * ============================= */
 
-bool AMagazineAttachment::AddBullet(EBulletType BulletType)
-{
+bool AMagazineAttachment::AddBullet(EBulletType BulletType) {
+    if (!HasAuthority())
+    {
+        Server_AddBullet(BulletType);
+        return false;
+    }
+
     if (GetAmmoCount() >= MagazineCapacity)
     {
         UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s FULL! Capacity=%d"),
                *GetName(), MagazineCapacity);
         return false;
     }
+
     if (BulletBuffer.Put(BulletType))
     {
         UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s added bullet: %s (AmmoCount=%d)"),
                *GetName(), *BulletTypeToString(BulletType), GetAmmoCount());
+        // Update replicate if using
+        ReplicatedAmmoCount = GetAmmoCount();
         return true;
     }
     return false;
 }
 
+void AMagazineAttachment::Server_AddBullet_Implementation(EBulletType BulletType) {
+    if (!HasAuthority()) return;
+    AddBullet(BulletType);
+}
 
 EBulletType AMagazineAttachment::RemoveBullet()
 {
+    if (!HasAuthority())
+    {
+        Server_RemoveBullet();
+        return EBulletType::None;
+    }
+
     EBulletType Out{};
     if (BulletBuffer.Get(Out))
     {
         UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s removed bullet: %s (AmmoCount=%d)"),
-               *GetName(),
-               *BulletTypeToString(Out),
-               GetAmmoCount());
+               *GetName(), *BulletTypeToString(Out), GetAmmoCount());
+        ReplicatedAmmoCount = GetAmmoCount();
         return Out;
     }
 
     UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s is EMPTY!"), *GetName());
     return EBulletType::None;
+}
+
+void AMagazineAttachment::Server_RemoveBullet_Implementation()
+{
+    if (!HasAuthority()) return;
+    RemoveBullet();
 }
 
 int32 AMagazineAttachment::GetAmmoCount() const
@@ -163,21 +193,42 @@ FString AMagazineAttachment::BulletTypeToString(EBulletType Type)
     }
 }
 
-void AMagazineAttachment::Empty()
+void AMagazineAttachment::RemoveBullets(int32 n)
 {
-    EBulletType Temp{};
-    int32 Count = 0;
-    while (BulletBuffer.Get(Temp)) { Count++; }
+    if (!HasAuthority())
+    {
+        Server_RemoveBullets(n);
+        return;
+    }
 
-    if (Count > 0)
+    if (n < 0) return;
+
+    EBulletType Temp{};
+    if (n > 0 && BulletBuffer.Get(&Temp, n)) // pass pointer to Temp
     {
-        UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s fully emptied (%d rounds removed)."),
-               *GetName(), Count);
+        UE_LOG(LogAttachmentSystem, Warning,
+            TEXT("Magazine %s fully emptied (%d rounds removed)."),
+            *GetName(), n);
     }
-    else
+    else if (BulletBuffer.IsEmpty())
     {
-        UE_LOG(LogAttachmentSystem, Warning, TEXT("Magazine %s already EMPTY."), *GetName());
+        UE_LOG(LogAttachmentSystem, Warning,
+            TEXT("Magazine %s already EMPTY."), *GetName());
     }
+
+    ReplicatedAmmoCount = GetAmmoCount(); // maintains synchronized state
+}
+
+void AMagazineAttachment::Server_RemoveBullets_Implementation(int32 n)
+{
+    if (!HasAuthority()) return;
+    RemoveBullets(n);
+}
+
+void AMagazineAttachment::OnRep_AmmoCount()
+{
+    UE_LOG(LogAttachmentSystem, Log, TEXT("Magazine %s ammo synced: %d"),
+           *GetName(), ReplicatedAmmoCount);
 }
 
 void AMagazineAttachment::LogBufferNonDestructive(const FString& Context)

@@ -1,33 +1,65 @@
 ﻿#include "Actors/BarrelAttachment.h"
 #include "Net/UnrealNetwork.h"
 
-ABarrelAttachment::ABarrelAttachment()
-{
+ABarrelAttachment::ABarrelAttachment() {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 }
 
-void ABarrelAttachment::SetChamberedRound(EBulletType NewRound)
+void ABarrelAttachment::SetChamberedRounds(const TArray<EBulletType>& NewRounds)
 {
-	ChamberedRound = (NewRound != EBulletType::None) ? std::make_optional(NewRound) : std::nullopt;
-	ReplicatedChamberedRound = NewRound;
-}
-
-void ABarrelAttachment::ClearChamber()
-{
-	ChamberedRound.reset();
-	ReplicatedChamberedRound = EBulletType::None;
-}
-
-void ABarrelAttachment::OnRep_ChamberedRound()
-{
-	if (ReplicatedChamberedRound == EBulletType::None)
+	if (!HasAuthority())
 	{
-		ChamberedRound.reset();
+		Server_SetChamberedRounds(NewRounds);
+		return;
+	}
+
+	if (NewRounds.Num() > 0)
+	{
+		ChamberedRounds = NewRounds;
+		ReplicatedChamberedRounds = NewRounds;
 	}
 	else
 	{
-		ChamberedRound = ReplicatedChamberedRound;
+		ChamberedRounds.reset();
+		ReplicatedChamberedRounds.Empty();
+	}
+}
+
+void ABarrelAttachment::Server_SetChamberedRounds_Implementation(const TArray<EBulletType>& NewRounds)
+{
+	if (!HasAuthority()) return;
+	SetChamberedRounds(NewRounds);
+}
+
+
+void ABarrelAttachment::ClearChamber()
+{
+	if (!HasAuthority())
+	{
+		Server_ClearChamber();
+		return;
+	}
+
+	ChamberedRounds.reset();
+	ReplicatedChamberedRounds.Empty();
+}
+
+void ABarrelAttachment::Server_ClearChamber_Implementation()
+{
+	if (!HasAuthority()) return;
+	ClearChamber();
+}
+
+void ABarrelAttachment::OnRep_ChamberedRounds()
+{
+	if (ReplicatedChamberedRounds.Num() == 0)
+	{
+		ChamberedRounds.reset();
+	}
+	else
+	{
+		ChamberedRounds = ReplicatedChamberedRounds;
 	}
 }
 
@@ -35,6 +67,5 @@ void ABarrelAttachment::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ABarrelAttachment, ReplicatedChamberedRound);
+	DOREPLIFETIME(ABarrelAttachment, ReplicatedChamberedRounds);
 }
-

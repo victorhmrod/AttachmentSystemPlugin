@@ -60,6 +60,9 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category="Weapon|Builder")
 	void BuildWeapon();
 
+	UFUNCTION(Server, Reliable)
+	void Server_BuildWeapon();
+
 	/** 
  * Checks if an attachment placed at the given transform 
  * would collide with the current rail configuration. 
@@ -81,6 +84,9 @@ public:
  */
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Builder")
 	void ClearWeapon();
+
+	UFUNCTION(Server, Reliable)
+	void Server_ClearWeapon();
 
 	/** 
  * Searches for an attachment currently mounted on the weapon by its category. 

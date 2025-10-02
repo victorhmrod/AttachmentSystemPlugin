@@ -16,30 +16,34 @@ public:
 
 	/** Set chambered round when racking or reloading. */
 	UFUNCTION(BlueprintCallable, Category="Barrel|Ammo")
-	void SetChamberedRound(EBulletType NewRound);
+	void SetChamberedRounds(const TArray<EBulletType>& NewRounds);
 
-	/** Clear chamber (after firing). */
+	UFUNCTION(Server, Reliable)
+	void Server_SetChamberedRounds(const TArray<EBulletType>& NewRounds);
+	
 	UFUNCTION(BlueprintCallable, Category="Barrel|Ammo")
 	void ClearChamber();
 
-	/** Get current chambered round (optional). */
-	std::optional<EBulletType> GetChamberedRound() const { return ChamberedRound; }
+	UFUNCTION(Server, Reliable)
+	void Server_ClearChamber();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Barrel|Ammo")
+	TArray<EBulletType> GetChamberedRounds() const { return ChamberedRounds.value_or(TArray<EBulletType>{}); }
 
 	/** Quick check if chamber is occupied. */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Barrel|Ammo")
-	bool HasRoundChambered() const { return ChamberedRound.has_value(); }
+	bool HasRoundChambered() const { return ChamberedRounds && ChamberedRounds->Num() > 0; }
 
 protected:
-	/** Replicated value of the chambered round (None means no round). */
-	UPROPERTY(ReplicatedUsing=OnRep_ChamberedRound)
-	EBulletType ReplicatedChamberedRound = EBulletType::None;
+	/** Replicated chambered rounds (empty if none). */
+	UPROPERTY(ReplicatedUsing=OnRep_ChamberedRounds)
+	TArray<EBulletType> ReplicatedChamberedRounds;
 
-	/** Local state (optional, not directly replicated). */
-	std::optional<EBulletType> ChamberedRound;
+	/** Local optional array of chambered rounds (e.g. shotgun pellets). */
+	std::optional<TArray<EBulletType>> ChamberedRounds;
 
-	/** Called when ReplicatedChamberedRound updates from server. */
 	UFUNCTION()
-	void OnRep_ChamberedRound();
+	void OnRep_ChamberedRounds();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;	
 };
