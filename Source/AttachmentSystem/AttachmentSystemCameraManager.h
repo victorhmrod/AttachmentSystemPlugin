@@ -2,21 +2,19 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Camera/PlayerCameraManager.h"
 #include "AttachmentSystemCameraManager.generated.h"
+#include "Camera/PlayerCameraManager.h"
+#include "CoreMinimal.h"
 
 /**
  *  Basic First Person camera manager.
  *  Limits min/max look pitch.
  */
 UCLASS()
-class AAttachmentSystemCameraManager : public APlayerCameraManager
-{
-	GENERATED_BODY()
-	
-public:
+class AAttachmentSystemCameraManager : public APlayerCameraManager {
+  GENERATED_BODY()
 
-	/** Constructor */
-	AAttachmentSystemCameraManager();
+public:
+  /** Constructor */
+  AAttachmentSystemCameraManager();
 };
