@@ -1,71 +1,74 @@
 #pragma once
 
-#include "RingBuffer.h" // import modulus types
 #include <array>
-#include <atomic>
 #include <type_traits>
+#include <atomic>
+#include "RingBuffer.h" // import modulus types
 
 // Implement a single producer, single consumer (SPSC) ring buffer
 // basic Lamport Proving the Correctness of Multiprocess Programs (1977) design
 // is wait-free
 // replaced modulus % with two better options
-template <size_t N = 512, typename DataType = char,
-          typename IndexType = uint32_t,
-          typename RingMod = Lomont::FastRingMod<N, IndexType>>
-class ModulusRingBuffer {
+template <size_t N = 512, typename DataType = char, typename  IndexType = uint32_t, typename RingMod = Lomont::FastRingMod<N, IndexType>>
+class ModulusRingBuffer
+{
 public:
-  static_assert(std::is_unsigned<IndexType>::value,
-                "Ringbuffer IndexType should be unsigned for numerics");
 
-  // how many items available to read in [0,Size]
-  // if called from consumer, true size may be more since producer can be adding
-  // if called from producer, true size may be less since consumer may be
-  // removing undefined to call from any other thread
-  size_t AvailableToRead() const {
-    return RingMod::Mod1N(N + writeIndex_ - readIndex_);
-  }
+	static_assert(std::is_unsigned<IndexType>::value, "Ringbuffer IndexType should be unsigned for numerics");
 
-  // how many items available to write in [0,Size]
-  // if called from consumer, true size may be less since producer can be adding
-  // if called from producer, true size may be more since consumer may be
-  // removing undefined to call from any other thread
-  size_t AvailableToWrite() const { return Size() - AvailableToRead(); }
+	// how many items available to read in [0,Size]
+	// if called from consumer, true size may be more since producer can be adding
+	// if called from producer, true size may be less since consumer may be removing
+	// undefined to call from any other thread
+	size_t AvailableToRead() const
+	{
+		return RingMod::Mod1N(N + writeIndex_ - readIndex_);
+	}
 
-  bool IsEmpty() const { return AvailableToRead() == 0; }
+	// how many items available to write in [0,Size]
+	// if called from consumer, true size may be less since producer can be adding
+	// if called from producer, true size may be more since consumer may be removing
+	// undefined to call from any other thread
+	size_t AvailableToWrite() const { return Size() - AvailableToRead(); }
 
-  bool IsFull() const { return AvailableToRead() == Size(); }
+	bool IsEmpty() const { return AvailableToRead() == 0; }
 
-  // Max number the buffer can hold
-  // sadly, this design is N-1, not N
-  size_t Size() const { return N - 1; }
+	bool IsFull() const { return AvailableToRead() == Size(); }
 
-  // try to put the item in, return false if full
-  bool Put(const DataType &datum) {
-    IndexType w = writeIndex_;
-    IndexType r = readIndex_;
+	// Max number the buffer can hold
+	// sadly, this design is N-1, not N
+	size_t Size() const { return N - 1; }
 
-    if (RingMod::Mod1N(w + 1) == r)
-      return false;
+	// try to put the item in, return false if full
+	bool Put(const DataType & datum)
+	{
+		IndexType w = writeIndex_;
+		IndexType r = readIndex_;
 
-    buffer_[w] = datum;
-    writeIndex_ = RingMod::Mod1N(w + 1);
-    return true;
-  }
+		if (RingMod::Mod1N(w + 1) == r)
+			return false;
 
-  // try to get an item, return false if none available
-  bool Get(DataType &datum) {
-    IndexType w = writeIndex_;
-    IndexType r = readIndex_;
+		buffer_[w] = datum;
+		writeIndex_ = RingMod::Mod1N(w + 1);
+		return true;
+	}
 
-    if (w == r)
-      return false;
-    datum = buffer_[r];
-    readIndex_ = RingMod::Mod1N(r + 1);
-    return true;
-  }
+	// try to get an item, return false if none available
+	bool Get(DataType & datum)
+	{
+		IndexType w = writeIndex_;
+		IndexType r = readIndex_;
 
+		if (w == r)
+			return false;
+		datum = buffer_[r];
+		readIndex_ = RingMod::Mod1N(r + 1);
+		return true;
+	}
 private:
-  std::atomic<IndexType> readIndex_{0};
-  std::atomic<IndexType> writeIndex_{0};
-  std::array<DataType, N> buffer_;
+	std::atomic<IndexType> readIndex_{ 0 };
+	std::atomic<IndexType> writeIndex_{ 0 };
+	std::array<DataType, N> buffer_;
 };
+
+

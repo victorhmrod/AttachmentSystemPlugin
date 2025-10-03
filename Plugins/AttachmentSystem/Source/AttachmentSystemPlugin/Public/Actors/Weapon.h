@@ -11,127 +11,131 @@ class UWeaponBuilderComponent;
 
 /** Reload stages for staged reload logic. */
 UENUM(BlueprintType)
-enum class EReloadStage : uint8 {
-  None UMETA(DisplayName = "None"),
-  RemoveMagazine UMETA(DisplayName = "Remove Magazine"),
-  InsertMagazine UMETA(DisplayName = "Insert Magazine"),
-  RackHandle UMETA(DisplayName = "Rack Charging Handle")
+enum class EReloadStage : uint8
+{
+    None            UMETA(DisplayName="None"),
+    RemoveMagazine  UMETA(DisplayName="Remove Magazine"),
+    InsertMagazine  UMETA(DisplayName="Insert Magazine"),
+    RackHandle      UMETA(DisplayName="Rack Charging Handle")
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponFire,
-                                            const TArray<EBulletType> &,
-                                            FiredRounds);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWeaponFire, const TArray<EBulletType>&, FiredRounds);
 
 UCLASS()
-class ATTACHMENTSYSTEMPLUGIN_API AWeapon : public AActor {
-  GENERATED_BODY()
+class ATTACHMENTSYSTEMPLUGIN_API AWeapon : public AActor
+{
+    GENERATED_BODY()
 
 public:
-  AWeapon();
-  virtual void Tick(float DeltaTime) override;
+    AWeapon();
+    virtual void Tick(float DeltaTime) override;
 
 protected:
-  virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-  virtual void GetLifetimeReplicatedProps(
-      TArray<class FLifetimeProperty> &OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
-  /** Root component */
-  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Components")
-  TObjectPtr<USceneComponent> Root;
+    /** Root component */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Components")
+    TObjectPtr<USceneComponent> Root;
 
-  /** Builder that spawns and manages attachments */
-  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Components")
-  TObjectPtr<UWeaponBuilderComponent> WeaponBuilderComponent;
+    /** Builder that spawns and manages attachments */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Components")
+    TObjectPtr<UWeaponBuilderComponent> WeaponBuilderComponent;
 
 public:
-  /* =============================
-   * Weapon Data
-   * ============================= */
-  UFUNCTION()
-  void HandleWeaponBuilt(const TArray<AAttachment *> &SpawnedAttachments);
+    /* =============================
+     * Weapon Data
+     * ============================= */
+    UFUNCTION()
+    void HandleWeaponBuilt(const TArray<AAttachment*>& SpawnedAttachments);
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Config")
-  FWeaponInfo WeaponInfo;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon|Config")
+    FWeaponInfo WeaponInfo;
 
-  UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Weapon|Stats")
-  FWeaponCurrentState WeaponCurrentState;
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="Weapon|Stats")
+    FWeaponCurrentState WeaponCurrentState;
 
-  UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Weapon|Stats")
-  float GetWeaponDurability(
-      EWeaponDurabilityMode Mode = EWeaponDurabilityMode::Average);
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Stats")
+    float GetWeaponDurability(EWeaponDurabilityMode Mode = EWeaponDurabilityMode::Average);
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Stats")
-  void ModifyDurability(float Delta);
+    UFUNCTION(BlueprintCallable, Category="Weapon|Stats")
+    void ModifyDurability(float Delta);
 
-  /* =============================
-   * Ammo / Attachments
-   * ============================= */
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Ammo")
-  AMagazineAttachment *CurrentMagazine = nullptr;
+    /* =============================
+     * Ammo / Attachments
+     * ============================= */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Ammo")
+    AMagazineAttachment* CurrentMagazine = nullptr;
 
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Ammo")
-  ABarrelAttachment *CurrentBarrel = nullptr;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Ammo")
+    ABarrelAttachment* CurrentBarrel = nullptr;
 
-  UPROPERTY(BlueprintAssignable, Category = "Weapon|Ammo")
-  FOnWeaponFire OnWeaponFired;
+    UPROPERTY(BlueprintAssignable, Category="Weapon|Ammo")
+    FOnWeaponFire OnWeaponFired;
 
-  /** Debug function to test weapon logic with logs. */
-  UFUNCTION(BlueprintCallable, CallInEditor, Category = "Weapon|Debug")
-  void RunWeaponTest();
+    /** Debug function to test weapon logic with logs. */
+    UFUNCTION(BlueprintCallable, CallInEditor, Category="Weapon|Debug")
+    void RunWeaponTest();
 
-  /* =============================
-   * Fire
-   * ============================= */
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  TArray<EBulletType> FireWeapon();
+    /* =============================
+     * Fire
+     * ============================= */
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    TArray<EBulletType> FireWeapon();
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  TArray<EBulletType> FireFromChamber();
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  bool TryChamberFromMagazine();
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    TArray<EBulletType> FireFromChamber();
 
-  /* =============================
-   * Reload
-   * ============================= */
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    bool TryChamberFromMagazine();
+    
+    /* =============================
+     * Reload
+     * ============================= */
+    
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    void ReloadWeapon(AMagazineAttachment* NewMag);
+    
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    void ReloadMagazine(AMagazineAttachment* NewMag);
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Reload")
+    EReloadStage CurrentReloadStage = EReloadStage::None;
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  void ReloadWeapon(AMagazineAttachment *NewMag);
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Weapon|Reload")
+    bool bHasMagazineAttached = false;
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  void ReloadMagazine(AMagazineAttachment *NewMag);
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Reload")
-  EReloadStage CurrentReloadStage = EReloadStage::None;
+    UFUNCTION(BlueprintCallable, Category="Weapon|Reload")
+    void BeginStagedReload();
 
-  UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Reload")
-  bool bHasMagazineAttached = false;
+    UFUNCTION(BlueprintCallable, Category="Weapon|Reload")
+    void ProcessReloadStage(EReloadStage Stage, AMagazineAttachment* NewMag = nullptr);
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Reload")
-  void BeginStagedReload();
+    UFUNCTION(BlueprintCallable, Category="Weapon|Reload")
+    void CancelReload();
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Reload")
-  void ProcessReloadStage(EReloadStage Stage,
-                          AMagazineAttachment *NewMag = nullptr);
+    /* =============================
+     * Helpers
+     * ============================= */
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Ammo")
+    int32 GetAmmoCount() const;
 
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Reload")
-  void CancelReload();
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Ammo")
+    EBulletType GetChamberedRound() const;
 
-  /* =============================
-   * Helpers
-   * ============================= */
-  UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Weapon|Ammo")
-  int32 GetAmmoCount() const;
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Ammo")
+    bool HasRoundChambered() const;
 
-  UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Weapon|Ammo")
-  EBulletType GetChamberedRound() const;
+    UFUNCTION(BlueprintCallable, BlueprintPure, Category="Weapon|Ammo")
+    FORCEINLINE USceneComponent* GetRoot() const
+    {
+        return Root;
+    }
 
-  UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Weapon|Ammo")
-  bool HasRoundChambered() const;
-
-  UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Weapon|Ammo")
-  FORCEINLINE USceneComponent *GetRoot() const { return Root; }
-
-  UFUNCTION(BlueprintCallable, Category = "Weapon|Ammo")
-  FORCEINLINE bool HasAmmo() const { return GetAmmoCount() > 0; }
+    UFUNCTION(BlueprintCallable, Category="Weapon|Ammo")
+    FORCEINLINE bool HasAmmo() const
+    {
+        return GetAmmoCount() > 0;
+    }
 };

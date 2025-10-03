@@ -10,10 +10,12 @@
  *  Simple GameMode for a first person horror game
  */
 UCLASS(abstract)
-class ATTACHMENTSYSTEM_API AHorrorGameMode : public AGameModeBase {
-  GENERATED_BODY()
-
+class ATTACHMENTSYSTEM_API AHorrorGameMode : public AGameModeBase
+{
+	GENERATED_BODY()
+	
 public:
-  /** Constructor */
-  AHorrorGameMode();
+
+	/** Constructor */
+	AHorrorGameMode();
 };

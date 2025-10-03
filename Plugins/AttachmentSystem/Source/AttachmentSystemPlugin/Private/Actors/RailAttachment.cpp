@@ -1,126 +1,128 @@
 #include "Actors/RailAttachment.h"
 #include "Components/SplineComponent.h"
 
-ARailAttachment::ARailAttachment() {
-  // Create spline component
-  RailSpline = CreateDefaultSubobject<USplineComponent>(TEXT("RailSpline"));
-  RailSpline->SetupAttachment(RootComponent);
+ARailAttachment::ARailAttachment()
+{
+    // Create spline component
+    RailSpline = CreateDefaultSubobject<USplineComponent>(TEXT("RailSpline"));
+    RailSpline->SetupAttachment(RootComponent);
 
-  NumSlots = 15;
-  SlotSpacing = 2.54f; // default spacing
-  OccupancyMask = 0;
+    NumSlots = 15;
+    SlotSpacing = 2.54f; // default spacing
+    OccupancyMask = 0;
 }
 
-uint64 ARailAttachment::MakeMask(const int32 StartSlot,
-                                 const int32 ItemSize) const {
-  // Avoid variable name 'Size' to not shadow AAttachment::Size
-  if (ItemSize <= 0)
-    return 0ull;
-  return ((ItemSize >= 64) ? ~0ull : ((1ULL << ItemSize) - 1ULL)) << StartSlot;
+uint64 ARailAttachment::MakeMask(const int32 StartSlot, const int32 ItemSize) const
+{
+    // Avoid variable name 'Size' to not shadow AAttachment::Size
+    if (ItemSize <= 0) return 0ull;
+    return ((ItemSize >= 64) ? ~0ull : ((1ULL << ItemSize) - 1ULL)) << StartSlot;
 }
 
-bool ARailAttachment::CanPlaceAttachment(AAttachment *Attachment) const {
-  if (!Attachment || NumSlots <= 0)
-    return false;
+bool ARailAttachment::CanPlaceAttachment(AAttachment* Attachment) const
+{
+    if (!Attachment || NumSlots <= 0) return false;
 
-  const int32 Start = Attachment->StartPosition;
-  const int32 ItemSize = Attachment->Size; // renamed local
+    const int32 Start    = Attachment->StartPosition;
+    const int32 ItemSize = Attachment->Size; // renamed local
 
-  // --- Spline bounds check ---
-  if (Start < 0 || Start + ItemSize > NumSlots)
-    return false;
+    // --- Spline bounds check ---
+    if (Start < 0 || Start + ItemSize > NumSlots)
+        return false;
 
-  // --- Bitmask occupancy check ---
-  const uint64 Mask = MakeMask(Start, ItemSize);
-  return (OccupancyMask & Mask) == 0ull;
+    // --- Bitmask occupancy check ---
+    const uint64 Mask = MakeMask(Start, ItemSize);
+    return (OccupancyMask & Mask) == 0ull;
 }
 
-float ARailAttachment::GetSplineLength() const {
-  return RailSpline ? RailSpline->GetSplineLength() : 0.f;
+float ARailAttachment::GetSplineLength() const
+{
+    return RailSpline ? RailSpline->GetSplineLength() : 0.f;
 }
 
-int32 ARailAttachment::GetSlotFromDistance(float Distance) const {
-  if (!RailSpline || NumSlots <= 0)
-    return 0;
+int32 ARailAttachment::GetSlotFromDistance(float Distance) const
+{
+    if (!RailSpline || NumSlots <= 0) return 0;
 
-  const float RailLength = RailSpline->GetSplineLength();
-  float Normalized = FMath::Clamp(Distance / RailLength, 0.f, 1.f);
+    const float RailLength = RailSpline->GetSplineLength();
+    float Normalized = FMath::Clamp(Distance / RailLength, 0.f, 1.f);
 
-  int32 SlotIndex = FMath::FloorToInt(Normalized * (NumSlots - 1));
-  return SlotIndex;
+    int32 SlotIndex = FMath::FloorToInt(Normalized * (NumSlots - 1));
+    return SlotIndex;
 }
 
-bool ARailAttachment::PlaceAttachment(AAttachment *Attachment) {
-  if (!HasAuthority()) {
-    Server_PlaceAttachment(Attachment);
-    return false;
-  }
+bool ARailAttachment::PlaceAttachment(AAttachment* Attachment)
+{
+    if (!HasAuthority())
+    {
+        Server_PlaceAttachment(Attachment);
+        return false;
+    }
 
-  if (!CanPlaceAttachment(Attachment))
-    return false;
+    if (!CanPlaceAttachment(Attachment)) return false;
 
-  const int32 Start = Attachment->StartPosition;
-  const int32 ItemSize = Attachment->Size;
+    const int32 Start    = Attachment->StartPosition;
+    const int32 ItemSize = Attachment->Size;
 
-  const uint64 Mask = MakeMask(Start, ItemSize);
-  OccupancyMask |= Mask;
-  MountedAttachments.Add(Attachment);
+    const uint64 Mask = MakeMask(Start, ItemSize);
+    OccupancyMask |= Mask;
+    MountedAttachments.Add(Attachment);
 
-  if (RailSpline && Attachment->GetMeshComponent()) {
-    const FTransform SlotTransform = GetSlotTransform(Start);
-    Attachment->GetMeshComponent()->SetWorldTransform(SlotTransform);
-    Attachment->AttachToActor(this,
-                              FAttachmentTransformRules::KeepWorldTransform);
-  }
+    if (RailSpline && Attachment->GetMeshComponent())
+    {
+        const FTransform SlotTransform = GetSlotTransform(Start);
+        Attachment->GetMeshComponent()->SetWorldTransform(SlotTransform);
+        Attachment->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+    }
 
-  return true;
+    return true;
 }
 
-void ARailAttachment::Server_PlaceAttachment_Implementation(
-    AAttachment *Attachment) {
-  if (!HasAuthority())
-    return;
-  PlaceAttachment(Attachment);
+void ARailAttachment::Server_PlaceAttachment_Implementation(AAttachment* Attachment)
+{
+    if (!HasAuthority()) return;
+    PlaceAttachment(Attachment);
 }
 
-void ARailAttachment::RemoveAttachment(AAttachment *Attachment) {
-  if (!HasAuthority()) {
-    Server_RemoveAttachment(Attachment);
-    return;
-  }
+void ARailAttachment::RemoveAttachment(AAttachment* Attachment)
+{
+    if (!HasAuthority())
+    {
+        Server_RemoveAttachment(Attachment);
+        return;
+    }
 
-  if (!Attachment || !MountedAttachments.Contains(Attachment))
-    return;
+    if (!Attachment || !MountedAttachments.Contains(Attachment)) return;
 
-  const int32 Start = Attachment->StartPosition;
-  const int32 ItemSize = Attachment->Size;
+    const int32 Start    = Attachment->StartPosition;
+    const int32 ItemSize = Attachment->Size;
 
-  const uint64 Mask = MakeMask(Start, ItemSize);
-  OccupancyMask &= ~Mask;
+    const uint64 Mask = MakeMask(Start, ItemSize);
+    OccupancyMask &= ~Mask;
 
-  MountedAttachments.Remove(Attachment);
+    MountedAttachments.Remove(Attachment);
 }
 
-void ARailAttachment::Server_RemoveAttachment_Implementation(
-    AAttachment *Attachment) {
-  if (!HasAuthority())
-    return;
-  RemoveAttachment(Attachment);
+void ARailAttachment::Server_RemoveAttachment_Implementation(AAttachment* Attachment)
+{
+    if (!HasAuthority()) return;
+    RemoveAttachment(Attachment);
 }
 
-FTransform ARailAttachment::GetSlotTransform(const int32 SlotIndex) const {
-  // If the spline is missing, just return identity
-  if (!IsValid(RailSpline)) {
-    return FTransform::Identity;
-  }
+FTransform ARailAttachment::GetSlotTransform(const int32 SlotIndex) const
+{
+    // If the spline is missing, just return identity
+    if (!IsValid(RailSpline))
+    {
+        return FTransform::Identity;
+    }
 
-  // Clamp the index so it never goes beyond NumSlots
-  const int32 ClampedIndex = FMath::Clamp(SlotIndex, 0, NumSlots - 1);
+    // Clamp the index so it never goes beyond NumSlots
+    const int32 ClampedIndex = FMath::Clamp(SlotIndex, 0, NumSlots - 1);
 
-  // Distance along the spline = index * spacing
-  const float Distance = ClampedIndex * SlotSpacing;
+    // Distance along the spline = index * spacing
+    const float Distance = ClampedIndex * SlotSpacing;
 
-  // Get the world transform at this distance along the spline
-  return RailSpline->GetTransformAtDistanceAlongSpline(
-      Distance, ESplineCoordinateSpace::World);
+    // Get the world transform at this distance along the spline
+    return RailSpline->GetTransformAtDistanceAlongSpline(Distance, ESplineCoordinateSpace::World);
 }

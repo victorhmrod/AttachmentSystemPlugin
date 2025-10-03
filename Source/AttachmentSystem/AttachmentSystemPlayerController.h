@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "AttachmentSystemPlayerController.generated.h"
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "AttachmentSystemPlayerController.generated.h"
 
 class UInputMappingContext;
 class UUserWidget;
@@ -15,33 +15,36 @@ class UUserWidget;
  *  Overrides the Player Camera Manager class.
  */
 UCLASS(abstract)
-class ATTACHMENTSYSTEM_API AAttachmentSystemPlayerController
-    : public APlayerController {
-  GENERATED_BODY()
-
+class ATTACHMENTSYSTEM_API AAttachmentSystemPlayerController : public APlayerController
+{
+	GENERATED_BODY()
+	
 public:
-  /** Constructor */
-  AAttachmentSystemPlayerController();
+
+	/** Constructor */
+	AAttachmentSystemPlayerController();
 
 protected:
-  /** Input Mapping Contexts */
-  UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
-  TArray<UInputMappingContext *> DefaultMappingContexts;
 
-  /** Input Mapping Contexts */
-  UPROPERTY(EditAnywhere, Category = "Input|Input Mappings")
-  TArray<UInputMappingContext *> MobileExcludedMappingContexts;
+	/** Input Mapping Contexts */
+	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
+	TArray<UInputMappingContext*> DefaultMappingContexts;
 
-  /** Mobile controls widget to spawn */
-  UPROPERTY(EditAnywhere, Category = "Input|Touch Controls")
-  TSubclassOf<UUserWidget> MobileControlsWidgetClass;
+	/** Input Mapping Contexts */
+	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
+	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
 
-  /** Pointer to the mobile controls widget */
-  TObjectPtr<UUserWidget> MobileControlsWidget;
+	/** Mobile controls widget to spawn */
+	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
+	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
 
-  /** Gameplay initialization */
-  virtual void BeginPlay() override;
+	/** Pointer to the mobile controls widget */
+	TObjectPtr<UUserWidget> MobileControlsWidget;
 
-  /** Input mapping context setup */
-  virtual void SetupInputComponent() override;
+	/** Gameplay initialization */
+	virtual void BeginPlay() override;
+
+	/** Input mapping context setup */
+	virtual void SetupInputComponent() override;
+
 };

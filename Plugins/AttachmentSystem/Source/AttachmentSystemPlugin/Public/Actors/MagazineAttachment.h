@@ -1,81 +1,81 @@
 ﻿#pragma once
 
-#include "Attachment.h"
 #include "CoreMinimal.h"
-#include "MagazineAttachment.generated.h"
+#include "Attachment.h"
 #include "ThirdParty/RingBuffer.h"
+#include "MagazineAttachment.generated.h"
 
 UCLASS()
-class ATTACHMENTSYSTEMPLUGIN_API AMagazineAttachment : public AAttachment {
-  GENERATED_BODY()
+class ATTACHMENTSYSTEMPLUGIN_API AMagazineAttachment : public AAttachment
+{
+    GENERATED_BODY()
 
 public:
-  AMagazineAttachment();
+    AMagazineAttachment();
 
-  virtual void GetLifetimeReplicatedProps(
-      TArray<class FLifetimeProperty> &OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> &OutLifetimeProps) const override;
 
-  /** Add a bullet of the given type to the magazine (returns true if added). */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  bool AddBullet(EBulletType BulletType);
+    /** Add a bullet of the given type to the magazine (returns true if added). */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    bool AddBullet(EBulletType BulletType);
 
-  UFUNCTION(Server, Reliable)
-  void Server_AddBullet(EBulletType BulletType);
+    UFUNCTION(Server, Reliable)
+    void Server_AddBullet(EBulletType BulletType);
+    
+    /** Removes one bullet from the magazine and returns its type. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    EBulletType RemoveBullet();
 
-  /** Removes one bullet from the magazine and returns its type. */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  EBulletType RemoveBullet();
+    UFUNCTION(Server, Reliable)
+    void Server_RemoveBullet();
 
-  UFUNCTION(Server, Reliable)
-  void Server_RemoveBullet();
+    /** Gets the current number of bullets in the magazine. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    int32 GetAmmoCount() const;
 
-  /** Gets the current number of bullets in the magazine. */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  int32 GetAmmoCount() const;
+    /** Gets the maximum capacity of the magazine. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    int32 GetCapacity() const { return MagazineCapacity; }
 
-  /** Gets the maximum capacity of the magazine. */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  int32 GetCapacity() const { return MagazineCapacity; }
+    /** Checks if the magazine is empty. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    bool IsEmpty() const;
 
-  /** Checks if the magazine is empty. */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  bool IsEmpty() const;
+    /** Utility: convert bullet type to string for logs. */
+    static FString BulletTypeToString(EBulletType Type);
+    
+    /** Empties the magazine completely. */
+    UFUNCTION(BlueprintCallable, Category="Magazine")
+    void RemoveBullets(int32 n);
 
-  /** Utility: convert bullet type to string for logs. */
-  static FString BulletTypeToString(EBulletType Type);
+    UFUNCTION(Server, Reliable)
+    void Server_RemoveBullets(int32 n);
 
-  /** Empties the magazine completely. */
-  UFUNCTION(BlueprintCallable, Category = "Magazine")
-  void RemoveBullets(int32 n);
+    UPROPERTY(ReplicatedUsing=OnRep_AmmoCount)
+    int32 ReplicatedAmmoCount = 0;
 
-  UFUNCTION(Server, Reliable)
-  void Server_RemoveBullets(int32 n);
-
-  UPROPERTY(ReplicatedUsing = OnRep_AmmoCount)
-  int32 ReplicatedAmmoCount = 0;
-
-  UFUNCTION()
-  void OnRep_AmmoCount();
+    UFUNCTION()
+    void OnRep_AmmoCount();
 
 protected:
-  virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-  UFUNCTION(BlueprintCallable, CallInEditor, Category = "Magazine|Debug")
-  static void RunPerformanceTest();
+    UFUNCTION(BlueprintCallable, CallInEditor, Category="Magazine|Debug")
+    static void RunPerformanceTest();
 
 private:
-  /** Capacity of the magazine (compile-time constant). */
-  static constexpr int32 MagazineCapacity = 30;
+    /** Capacity of the magazine (compile-time constant). */
+    static constexpr int32 MagazineCapacity = 30;
 
-  /** Internal buffer storing bullet types. */
-  Lomont::RingBuffer<MagazineCapacity, EBulletType, int32> BulletBuffer;
+    /** Internal buffer storing bullet types. */
+    Lomont::RingBuffer<MagazineCapacity, EBulletType, int32> BulletBuffer;
+    
+    /** Utility: log buffer contents without destroying data. */
+    void LogBufferNonDestructive(const FString& Context);
 
-  /** Utility: log buffer contents without destroying data. */
-  void LogBufferNonDestructive(const FString &Context);
+    /** Helper: enqueue N bullets of same type. */
+    void EnqueueNTimes(EBulletType Type, int32 Count);
 
-  /** Helper: enqueue N bullets of same type. */
-  void EnqueueNTimes(EBulletType Type, int32 Count);
-
-  /** Helper: dequeue N bullets and log results. */
-  void DequeueNTimes(int32 Count);
+    /** Helper: dequeue N bullets and log results. */
+    void DequeueNTimes(int32 Count);
 };

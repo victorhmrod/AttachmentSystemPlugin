@@ -3,7 +3,6 @@
 #include "AttachmentSystem.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, AttachmentSystem,
-                              "AttachmentSystem");
+IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, AttachmentSystem, "AttachmentSystem" );
 
 DEFINE_LOG_CATEGORY(LogAttachmentSystem)

@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "Components/RingBufferBaseComponent.h"
 #include "CoreMinimal.h"
+#include "Components/RingBufferBaseComponent.h"
 #include "ThirdParty/RelaxedRingBuffer.h"
 
 #include "RingBufferRelaxedComponent.generated.h"
@@ -14,25 +14,25 @@
  * - Uses fast modular arithmetic (FastRingMod).
  * - Exposed to Blueprints through URingBufferBaseComponent.
  */
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class RINGBUFFERPLUGIN_API URingBufferRelaxedComponent
-    : public URingBufferBaseComponent {
-  GENERATED_BODY()
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+class RINGBUFFERPLUGIN_API URingBufferRelaxedComponent : public URingBufferBaseComponent
+{
+	GENERATED_BODY()
 
 public:
-  URingBufferRelaxedComponent();
+	URingBufferRelaxedComponent();
 
 protected:
-  // URingBufferBaseComponent implementation
-  virtual bool BufferPutByte(uint8 Byte) override;
-  virtual bool BufferGetByte(uint8 &OutByte) override;
-  virtual bool BufferIsEmpty() const override;
-  virtual bool BufferIsFull() const override;
-  virtual int32 BufferAvailableToRead() const override;
-  virtual int32 BufferAvailableToWrite() const override;
-  virtual void BufferClear() override;
+	// URingBufferBaseComponent implementation
+	virtual bool  BufferPutByte(uint8 Byte) override;
+	virtual bool  BufferGetByte(uint8& OutByte) override;
+	virtual bool  BufferIsEmpty() const override;
+	virtual bool  BufferIsFull() const override;
+	virtual int32 BufferAvailableToRead() const override;
+	virtual int32 BufferAvailableToWrite() const override;
+	virtual void  BufferClear() override;
 
 private:
-  static constexpr size_t N = 1024;
-  RelaxedRingBuffer<N, char, uint32, Lomont::FastRingMod<N, uint32>> Buffer;
+	static constexpr size_t N = 1024;
+	RelaxedRingBuffer<N, char, uint32, Lomont::FastRingMod<N,uint32>> Buffer;
 };

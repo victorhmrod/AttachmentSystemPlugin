@@ -1,23 +1,23 @@
 #if 0
 #include <iostream>
-#include <thread>
 #include <vector>
+#include <thread>
 
 #ifdef __SAMD21G18A__
 #define SAMD21_BUILD
 #endif
 
-// Ring buffer -
-#include "AtomicsRingBuffer.h" // for SPSC, can replace locks with atomics
-#include "BlocksRingBuffer.h"  // add read/write in blocks
-#include "CacheRingBuffer.h" // move read/write to other locations for cache help
-#include "FullRingBuffer.h" // replace mod N with mod 2N, uses all N buffer slots
+// Ring buffer - 
+#include "SimpleRingBuffer.h"  // single thread, simple
 #include "GenericRingBuffer.h" // template things, including size
 #include "LockedRingBuffer.h"  // add locks to make threaded
+#include "AtomicsRingBuffer.h" // for SPSC, can replace locks with atomics
 #include "ModulusRingBuffer.h" // remove modulus, use if, or power of 2 tricks
 #include "RelaxedRingBuffer.h" // relax the atomics load/store memory ordering
-#include "RingBuffer.h" // add predictive read/write locations to loosen false sharing
-#include "SimpleRingBuffer.h" // single thread, simple
+#include "FullRingBuffer.h"    // replace mod N with mod 2N, uses all N buffer slots
+#include "CacheRingBuffer.h"   // move read/write to other locations for cache help
+#include "BlocksRingBuffer.h"  // add read/write in blocks
+#include "RingBuffer.h"        // add predictive read/write locations to loosen false sharing
 
 // send output here
 void WriteLine(const char * line);
@@ -44,9 +44,9 @@ void WriteLine(const char * line)
 }
 void Error(const char * line)
 {
-#ifndef SAMD21_BUILD
+    #ifndef SAMD21_BUILD
     WriteLine(line);
-#endif
+    #endif
 }
 
 
@@ -375,6 +375,6 @@ int main()
 	PerformanceVI(bytes);
 	return 0;
 }
-#endif               // SAMD21_BUILD
+#endif // SAMD21_BUILD
 // end of file
 #endif
