@@ -4,11 +4,9 @@
 
 #include "Modules/ModuleManager.h"
 
-class FRingBufferPluginModule : public IModuleInterface
-{
+class FRingBufferPluginModule : public IModuleInterface {
 public:
-
-	/** IModuleInterface implementation */
-	virtual void StartupModule() override;
-	virtual void ShutdownModule() override;
+  /** IModuleInterface implementation */
+  virtual void StartupModule() override;
+  virtual void ShutdownModule() override;
 };

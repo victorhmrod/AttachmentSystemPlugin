@@ -16,119 +16,131 @@ class UBoxComponent;
  * - Provides getters for UI/tooltips and stat modifiers.
  */
 UCLASS(Blueprintable)
-class ATTACHMENTSYSTEMPLUGIN_API AAttachment : public AActor
-{
-	GENERATED_BODY()
+class ATTACHMENTSYSTEMPLUGIN_API AAttachment : public AActor {
+  GENERATED_BODY()
 
 public:
+  /** Default constructor */
+  AAttachment();
 
-	/** Default constructor */
-	AAttachment();
+  /* =============================
+   * Unreal Lifecycle Overrides
+   * ============================= */
 
-	/* =============================
-	 * Unreal Lifecycle Overrides
-	 * ============================= */
+  /** Called after all components have been initialized. */
+  virtual void PostInitializeComponents() override;
 
-	/** Called after all components have been initialized. */
-	virtual void PostInitializeComponents() override;
-
-	/** Called every frame if ticking is enabled. */
-	virtual void Tick(float DeltaTime) override;
+  /** Called every frame if ticking is enabled. */
+  virtual void Tick(float DeltaTime) override;
 
 protected:
-
-	/** Called when the game starts or when this actor is spawned. */
-	virtual void BeginPlay() override;
+  /** Called when the game starts or when this actor is spawned. */
+  virtual void BeginPlay() override;
 
 public:
+  /* =============================
+   * Visual Representation
+   * ============================= */
 
-	/* =============================
-	 * Visual Representation
-	 * ============================= */
+  /** Mesh component representing this attachment visually. */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+  TObjectPtr<USkeletalMeshComponent> MeshComponent;
 
-	/** Mesh component representing this attachment visually. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TObjectPtr<USkeletalMeshComponent> MeshComponent;
+  /* =============================
+   * Graph / Hierarchy
+   * ============================= */
 
+  /** Links to child attachments in the hierarchy. */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attachment|Inventory")
+  TArray<FAttachmentLink> ChildrenLinks;
 
-	/* =============================
-	 * Graph / Hierarchy
-	 * ============================= */
+  /** Starting index in graph traversal (e.g., rail offset). */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attachment|Inventory")
+  int32 StartPosition = 0;
 
-	/** Links to child attachments in the hierarchy. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment|Inventory")
-	TArray<FAttachmentLink> ChildrenLinks;
+  /** Number of slots this attachment occupies on a rail. */
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attachmen|Inventoryt")
+  int32 Size = 1;
 
-	/** Starting index in graph traversal (e.g., rail offset). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachment|Inventory")
-	int32 StartPosition = 0;
+  /* =============================
+   * Identity / Data
+   * ============================= */
 
-	/** Number of slots this attachment occupies on a rail. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Attachmen|Inventoryt")
-	int32 Size = 1;
+  /** Unique ID used for DataTable lookup and inventory reference. */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attachment|Inventory",
+            meta = (AllowPrivateAccess = "true", ExposeOnSpawn = "true"))
+  FName ID;
 
+  /** Static definition loaded from DataTable (mesh, stats, description). */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attachment",
+            meta = (AllowPrivateAccess = "true"))
+  FAttachmentInfo AttachmentInfo;
 
-	/* =============================
-	 * Identity / Data
-	 * ============================= */
+  /** Runtime state (e.g., current durability, dynamic values). */
+  UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attachment",
+            meta = (AllowPrivateAccess = "true"))
+  FAttachmentCurrentState AttachmentCurrentState;
 
-	/** Unique ID used for DataTable lookup and inventory reference. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment|Inventory", meta=(AllowPrivateAccess="true", ExposeOnSpawn="true"))
-	FName ID;
+  /** DataTable containing attachment definitions. */
+  UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attachment")
+  TObjectPtr<UDataTable> AttachmentDataTable;
 
-	/** Static definition loaded from DataTable (mesh, stats, description). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment", meta=(AllowPrivateAccess="true"))
-	FAttachmentInfo AttachmentInfo;
+  /** Load and apply DataTable info into this attachment (mesh, stats, etc.). */
+  void LoadAttachmentInfo();
 
-	/** Runtime state (e.g., current durability, dynamic values). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Attachment", meta=(AllowPrivateAccess="true"))
-	FAttachmentCurrentState AttachmentCurrentState;
+  /* =============================
+   * Getters
+   * ============================= */
 
-	/** DataTable containing attachment definitions. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Attachment")
-	TObjectPtr<UDataTable> AttachmentDataTable;
+  /** Returns this attachment's mesh component. */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE USkeletalMeshComponent *GetMeshComponent() const {
+    return MeshComponent;
+  }
 
-	/** Load and apply DataTable info into this attachment (mesh, stats, etc.). */
-	void LoadAttachmentInfo();
+  /** Returns current durability (runtime, not static DataTable value). */
+  UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Attachment|Stats")
+  FORCEINLINE float GetDurability() const {
+    return AttachmentCurrentState.Durability;
+  }
 
+  /** Returns full static definition (from DataTable). */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE FAttachmentInfo GetAttachmentInfo() const {
+    return AttachmentInfo;
+  }
 
-	/* =============================
-	 * Getters
-	 * ============================= */
+  /** Returns this attachment's category (optic, stock, barrel, etc.). */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE EAttachmentCategory GetAttachmentCategory() const {
+    return AttachmentInfo.Category;
+  }
 
-	/** Returns this attachment's mesh component. */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE USkeletalMeshComponent* GetMeshComponent() const { return MeshComponent; }
+  /** Returns how many slots this attachment occupies. */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE int32 GetSize() const { return AttachmentInfo.Size; }
 
-	/** Returns current durability (runtime, not static DataTable value). */
-	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Attachment|Stats")
-	FORCEINLINE float GetDurability() const { return AttachmentCurrentState.Durability; }
+  /** Returns the starting slot index. */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE int32 GetAttachmentStartSlot() const {
+    return AttachmentInfo.StartSlot;
+  }
 
-	/** Returns full static definition (from DataTable). */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE FAttachmentInfo GetAttachmentInfo() const { return AttachmentInfo; }
+  /** Returns short display name (used in UI). */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE FName GetAttachmentDisplayName() const {
+    return AttachmentInfo.Display_Name;
+  }
 
-	/** Returns this attachment's category (optic, stock, barrel, etc.). */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE EAttachmentCategory GetAttachmentCategory() const { return AttachmentInfo.Category; }
+  /** Returns description text (used in UI/tooltips). */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE FText GetAttachmentDisplayDescription() const {
+    return AttachmentInfo.Display_Description;
+  }
 
-	/** Returns how many slots this attachment occupies. */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE int32 GetSize() const { return AttachmentInfo.Size; }
-
-	/** Returns the starting slot index. */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE int32 GetAttachmentStartSlot() const { return AttachmentInfo.StartSlot; }
-
-	/** Returns short display name (used in UI). */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE FName GetAttachmentDisplayName() const { return AttachmentInfo.Display_Name; }
-
-	/** Returns description text (used in UI/tooltips). */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE FText GetAttachmentDisplayDescription() const { return AttachmentInfo.Display_Description; }
-
-	/** Returns stat modifiers this attachment applies. */
-	UFUNCTION(BlueprintPure, Category="Attachment")
-	FORCEINLINE TArray<FStatModifier> GetStatModifiers() const { return AttachmentInfo.Modifiers; }
+  /** Returns stat modifiers this attachment applies. */
+  UFUNCTION(BlueprintPure, Category = "Attachment")
+  FORCEINLINE TArray<FStatModifier> GetStatModifiers() const {
+    return AttachmentInfo.Modifiers;
+  }
 };

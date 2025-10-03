@@ -10,13 +10,9 @@
  *  Simple GameMode for a first person game
  */
 UCLASS(abstract)
-class AAttachmentSystemGameMode : public AGameModeBase
-{
-	GENERATED_BODY()
+class AAttachmentSystemGameMode : public AGameModeBase {
+  GENERATED_BODY()
 
 public:
-	AAttachmentSystemGameMode();
+  AAttachmentSystemGameMode();
 };
-
-
-

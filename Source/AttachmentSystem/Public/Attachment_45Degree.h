@@ -8,32 +8,27 @@
 #include "Attachment_45Degree.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class ATTACHMENTSYSTEM_API AAttachment_45Degree : public AAttachment_Base
-{
-	GENERATED_BODY()
+class ATTACHMENTSYSTEM_API AAttachment_45Degree : public AAttachment_Base {
+  GENERATED_BODY()
 
 public:
-	//==================================================
-	// PROPERTIES & VARIABLES
-	//==================================================
-	UPROPERTY(EditAnywhere, Category = "Mesh")
-	TObjectPtr<UChildActorComponent> Railing {nullptr};
+  //==================================================
+  // PROPERTIES & VARIABLES
+  //==================================================
+  UPROPERTY(EditAnywhere, Category = "Mesh")
+  TObjectPtr<UChildActorComponent> Railing{nullptr};
 
-	//==================================================
-	// FUNCTIONS
-	//==================================================
-	
+  //==================================================
+  // FUNCTIONS
+  //==================================================
 
 protected:
-	AAttachment_45Degree();
+  AAttachment_45Degree();
 
-	virtual void BeginPlay() override;
-	
-	virtual void OnPlacedEvent() override;
-	
+  virtual void BeginPlay() override;
 
-	
+  virtual void OnPlacedEvent() override;
 };

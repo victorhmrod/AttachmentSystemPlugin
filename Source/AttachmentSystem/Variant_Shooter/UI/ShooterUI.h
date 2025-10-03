@@ -10,13 +10,12 @@
  *  Simple scoreboard UI for a first person shooter game
  */
 UCLASS(abstract)
-class ATTACHMENTSYSTEM_API UShooterUI : public UUserWidget
-{
-	GENERATED_BODY()
-	
-public:
+class ATTACHMENTSYSTEM_API UShooterUI : public UUserWidget {
+  GENERATED_BODY()
 
-	/** Allows Blueprint to update score sub-widgets */
-	UFUNCTION(BlueprintImplementableEvent, Category="Shooter", meta = (DisplayName = "Update Score"))
-	void BP_UpdateScore(uint8 TeamByte, int32 Score);
+public:
+  /** Allows Blueprint to update score sub-widgets */
+  UFUNCTION(BlueprintImplementableEvent, Category = "Shooter",
+            meta = (DisplayName = "Update Score"))
+  void BP_UpdateScore(uint8 TeamByte, int32 Score);
 };

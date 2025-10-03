@@ -11,12 +11,10 @@
  *  Limits min/max look pitch.
  */
 UCLASS()
-class AAttachmentSystemCameraManager : public APlayerCameraManager
-{
-	GENERATED_BODY()
-	
-public:
+class AAttachmentSystemCameraManager : public APlayerCameraManager {
+  GENERATED_BODY()
 
-	/** Constructor */
-	AAttachmentSystemCameraManager();
+public:
+  /** Constructor */
+  AAttachmentSystemCameraManager();
 };
