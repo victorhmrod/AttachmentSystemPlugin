@@ -7,20 +7,15 @@
 #include "Weapon_Core.generated.h"
 
 UCLASS()
-class ATTACHMENTSYSTEM_API AWeapon_Core : public AActor
-{
-	GENERATED_BODY()
-	
-public:	
+class ATTACHMENTSYSTEM_API AWeapon_Core : public AActor {
+  GENERATED_BODY()
 
-	AWeapon_Core();
+public:
+  AWeapon_Core();
 
-	UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
-	TObjectPtr<UStaticMeshComponent> WeaponMesh;
+  UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
+  TObjectPtr<UStaticMeshComponent> WeaponMesh;
 
 protected:
-
-public:	
-
-
+public:
 };

@@ -7,11 +7,9 @@
 #include "Attachment_SimpleDot.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class ATTACHMENTSYSTEM_API AAttachment_SimpleDot : public AAttachment_Base
-{
-	GENERATED_BODY()
-	
+class ATTACHMENTSYSTEM_API AAttachment_SimpleDot : public AAttachment_Base {
+  GENERATED_BODY()
 };

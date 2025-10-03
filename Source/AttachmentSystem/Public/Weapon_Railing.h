@@ -8,32 +8,26 @@
 #include "Weapon_Railing.generated.h"
 
 UCLASS()
-class ATTACHMENTSYSTEM_API AWeapon_Railing : public AActor
-{
-	GENERATED_BODY()
-	
-public:	
-	//==================================================
-	// PROPERTIES & VARIABLES
-	//==================================================
-	UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
-	TObjectPtr<UStaticMeshComponent> RailMesh;
+class ATTACHMENTSYSTEM_API AWeapon_Railing : public AActor {
+  GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
-	TObjectPtr<USceneComponent> StartPoint;
-	UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
-	TObjectPtr<USceneComponent> EndPoint;
+public:
+  //==================================================
+  // PROPERTIES & VARIABLES
+  //==================================================
+  UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
+  TObjectPtr<UStaticMeshComponent> RailMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
-	FGameplayTagContainer RailingTags;
+  UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
+  TObjectPtr<USceneComponent> StartPoint;
+  UPROPERTY(EditAnywhere, Category = "Mesh", meta = (AllowPrivateAccess = true))
+  TObjectPtr<USceneComponent> EndPoint;
 
-	
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+  FGameplayTagContainer RailingTags;
+
 protected:
+  AWeapon_Railing();
 
-	AWeapon_Railing();
-	
-	virtual void BeginPlay() override;
-
-
-
+  virtual void BeginPlay() override;
 };
